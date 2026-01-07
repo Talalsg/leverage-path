@@ -201,7 +201,7 @@ export default function Deals() {
   return <div className="p-6 lg:p-8 max-w-[1600px] mx-auto space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
+          <h1 className="text-3xl font-bold flex items-center gap-3 text-white">
             Deal Flow
             <Badge className="bg-primary/10 text-primary"><Sparkles className="h-3 w-3 mr-1" />AI-Powered</Badge>
           </h1>
@@ -261,7 +261,7 @@ export default function Deals() {
                 {dealsByStage.map(stage => <div key={stage.key} className="min-w-[180px]">
                     <div className="flex items-center gap-2 mb-3">
                       <div className={`h-3 w-3 rounded-full ${stage.color}`} />
-                      <span className="font-semibold text-sm">{stage.label}</span>
+                      <span className="font-semibold text-sm text-white">{stage.label}</span>
                       <Badge variant="secondary" className="ml-auto text-xs">{stage.deals.length}</Badge>
                     </div>
                     <div className="space-y-2">
