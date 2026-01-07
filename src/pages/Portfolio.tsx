@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Plus, TrendingUp, Briefcase } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { ExitScenarioModal } from '@/components/ExitScenarioModal';
+import { useActivityLogger } from '@/hooks/useActivityLogger';
 
 interface Position {
   id: string;
@@ -24,6 +26,7 @@ interface Position {
 export default function Portfolio() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { logActivity } = useActivityLogger();
   const [positions, setPositions] = useState<Position[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -40,16 +43,23 @@ export default function Portfolio() {
 
   const handleCreate = async () => {
     if (!user || !formData.company_name) return;
-    const { error } = await supabase.from('portfolio').insert({
+    const { data, error } = await supabase.from('portfolio').insert({
       user_id: user.id,
       company_name: formData.company_name,
       sector: formData.sector || null,
       entry_valuation_usd: formData.entry_valuation_usd ? parseInt(formData.entry_valuation_usd) : null,
       equity_percent: formData.equity_percent ? parseFloat(formData.equity_percent) : null,
       entry_date: new Date().toISOString().split('T')[0],
-    });
-    if (error) { toast({ title: 'Error', description: error.message, variant: 'destructive' }); }
-    else { toast({ title: 'Position added' }); setDialogOpen(false); setFormData({ company_name: '', sector: '', entry_valuation_usd: '', equity_percent: '' }); fetchPositions(); }
+    }).select().single();
+    if (error) { 
+      toast({ title: 'Error', description: error.message, variant: 'destructive' }); 
+    } else { 
+      toast({ title: 'Position added' }); 
+      logActivity({ type: 'portfolio_added', title: `Added ${formData.company_name} position`, entityType: 'portfolio', entityId: data?.id });
+      setDialogOpen(false); 
+      setFormData({ company_name: '', sector: '', entry_valuation_usd: '', equity_percent: '' }); 
+      fetchPositions(); 
+    }
   };
 
   const totalPaperValue = positions.reduce((sum, p) => {
@@ -116,6 +126,14 @@ export default function Portfolio() {
               <div className="mt-4 space-y-2">
                 {position.equity_percent && <p className="text-sm"><span className="text-muted-foreground">Equity:</span> {position.equity_percent}%</p>}
                 {position.entry_valuation_usd && <p className="text-sm"><span className="text-muted-foreground">Entry:</span> ${(position.entry_valuation_usd / 1000000).toFixed(1)}M</p>}
+              </div>
+              <div className="mt-4">
+                <ExitScenarioModal 
+                  companyName={position.company_name}
+                  entryValuation={position.entry_valuation_usd}
+                  currentValuation={position.current_valuation_usd}
+                  equityPercent={position.equity_percent}
+                />
               </div>
             </CardContent>
           </Card>
