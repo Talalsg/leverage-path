@@ -268,12 +268,12 @@ export default function Deals() {
                       {stage.deals.map(deal => <Card key={deal.id} className={`bg-card border-border/50 hover:border-primary/30 transition-colors ${selectedDeals.has(deal.id) ? 'ring-2 ring-primary' : ''}`}>
                           <CardContent className="p-3">
                             <div className="flex items-start gap-2 mb-1">
-                              <Checkbox checked={selectedDeals.has(deal.id)} onCheckedChange={() => toggleDealSelection(deal.id)} className="mt-0.5 text-primary-foreground" />
+                              <Checkbox checked={selectedDeals.has(deal.id)} onCheckedChange={() => toggleDealSelection(deal.id)} className="mt-0.5" />
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-start justify-between">
                                   <p className="font-medium text-sm truncate flex-1">{deal.company_name}</p>
                                   {deal.ai_score && <Badge variant="outline" className="text-xs ml-1">
-                                      <Brain className="h-3 w-3 mr-1" />{deal.ai_score}
+                                      <Brain className="h-3 w-3 mr-1 text-primary-foreground" />{deal.ai_score}
                                     </Badge>}
                                 </div>
                                 {deal.sector && <p className="text-xs text-muted-foreground">{deal.sector}</p>}
