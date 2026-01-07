@@ -4,8 +4,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, Brain, FileText, TrendingUp, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, Brain, FileText, TrendingUp, AlertTriangle, CheckCircle, XCircle, Sparkles } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { BacktestResults } from '@/components/BacktestResults';
 
 interface Deal {
   id: string;
@@ -36,14 +37,27 @@ interface ScoreResult {
   iteration_speed: number;
   failure_modes: string[];
   exit_potential: string;
+  pattern_matches?: string[];
   recommendation: string;
   reasoning: string;
+}
+
+interface BacktestResult {
+  scenario_analysis: {
+    bear_case: { exit_valuation: number; roi: number; probability: number };
+    base_case: { exit_valuation: number; roi: number; probability: number };
+    bull_case: { exit_valuation: number; roi: number; probability: number };
+  };
+  expected_value: number;
+  lessons_learned: string[];
+  filter_update: string;
 }
 
 export function DealEvaluatorModal({ deal, open, onOpenChange, onComplete }: DealEvaluatorModalProps) {
   const { scoreDeal, generateMemo, runBacktest, isLoading } = useAIEvaluator();
   const [scoreResult, setScoreResult] = useState<ScoreResult | null>(null);
   const [memo, setMemo] = useState<string | null>(null);
+  const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
   const [activeTab, setActiveTab] = useState<'score' | 'memo' | 'backtest'>('score');
 
   const handleScore = async () => {
@@ -66,8 +80,11 @@ export function DealEvaluatorModal({ deal, open, onOpenChange, onComplete }: Dea
 
   const handleBacktest = async () => {
     if (!deal) return;
-    await runBacktest(deal);
-    onComplete();
+    const result = await runBacktest(deal);
+    if (result) {
+      setBacktestResult(result);
+      onComplete();
+    }
   };
 
   const getRecommendationColor = (rec: string) => {
@@ -148,6 +165,23 @@ export function DealEvaluatorModal({ deal, open, onOpenChange, onComplete }: Dea
                     </Badge>
                   </div>
 
+                  {/* Pattern Matches */}
+                  {scoreResult.pattern_matches && scoreResult.pattern_matches.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold flex items-center gap-2 mb-2">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        Pattern Matches
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {scoreResult.pattern_matches.map((pattern, i) => (
+                          <Badge key={i} variant="outline" className="bg-primary/10 text-primary border-primary/30">
+                            {pattern}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Detailed Scores */}
                   <div className="space-y-3">
                     <ScoreBar label="Vision 2030 Alignment" value={scoreResult.vision_2030_alignment} />
@@ -212,15 +246,21 @@ export function DealEvaluatorModal({ deal, open, onOpenChange, onComplete }: Dea
           )}
 
           {activeTab === 'backtest' && (
-            <div className="text-center py-8">
-              <TrendingUp className="h-16 w-16 mx-auto text-primary/30 mb-4" />
-              <p className="text-muted-foreground mb-4">
-                Simulate what would have happened with this deal at different outcomes
-              </p>
-              <Button onClick={handleBacktest} disabled={isLoading}>
-                {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <TrendingUp className="h-4 w-4 mr-2" />}
-                Run Backtest
-              </Button>
+            <div className="space-y-4">
+              {!backtestResult ? (
+                <div className="text-center py-8">
+                  <TrendingUp className="h-16 w-16 mx-auto text-primary/30 mb-4" />
+                  <p className="text-muted-foreground mb-4">
+                    Simulate what would have happened with this deal at different outcomes
+                  </p>
+                  <Button onClick={handleBacktest} disabled={isLoading}>
+                    {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <TrendingUp className="h-4 w-4 mr-2" />}
+                    Run Backtest
+                  </Button>
+                </div>
+              ) : (
+                <BacktestResults result={backtestResult} />
+              )}
             </div>
           )}
         </ScrollArea>
