@@ -18,6 +18,7 @@ import { DealEvaluatorModal } from '@/components/DealEvaluatorModal';
 import { DealComparison } from '@/components/DealComparison';
 import { PatternEditor } from '@/components/PatternEditor';
 import { CSVImport } from '@/components/CSVImport';
+import { useActivityLogger } from '@/hooks/useActivityLogger';
 
 type DealStage = 'review' | 'evaluating' | 'passed' | 'term_sheet' | 'closed' | 'rejected';
 type DealOutcome = 'win' | 'miss' | 'regret' | 'noise' | 'pending';
@@ -63,6 +64,7 @@ const outcomes: { key: DealOutcome; label: string; color: string }[] = [
 export default function Deals() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { logActivity } = useActivityLogger();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -86,16 +88,22 @@ export default function Deals() {
 
   const handleCreate = async () => {
     if (!user || !formData.company_name) return;
-    const { error } = await supabase.from('deals').insert({
+    const { data, error } = await supabase.from('deals').insert({
       user_id: user.id,
       company_name: formData.company_name,
       sector: formData.sector || null,
       valuation_usd: formData.valuation_usd ? parseInt(formData.valuation_usd) : null,
       founder_name: formData.founder_name || null,
       notes: formData.notes || null,
-    });
+    }).select().single();
     if (error) { toast({ title: 'Error', description: error.message, variant: 'destructive' }); }
-    else { toast({ title: 'Deal added' }); setDialogOpen(false); setFormData({ company_name: '', sector: '', valuation_usd: '', founder_name: '', notes: '' }); fetchDeals(); }
+    else { 
+      toast({ title: 'Deal added' }); 
+      setDialogOpen(false); 
+      setFormData({ company_name: '', sector: '', valuation_usd: '', founder_name: '', notes: '' }); 
+      logActivity({ type: 'deal_created', title: `Added deal: ${formData.company_name}`, entityType: 'deal', entityId: data?.id });
+      fetchDeals(); 
+    }
   };
 
   const updateStage = async (id: string, stage: DealStage) => {

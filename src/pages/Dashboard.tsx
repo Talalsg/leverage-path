@@ -3,7 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { DashboardCharts } from '@/components/DashboardCharts';
+import { WeeklyReview } from '@/components/WeeklyReview';
+import { GoalTracker } from '@/components/GoalTracker';
 import { 
   Target, 
   Briefcase, 
@@ -13,7 +16,8 @@ import {
   AlertTriangle,
   Calendar,
   ArrowUpRight,
-  BarChart3
+  BarChart3,
+  BookOpen
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -66,6 +70,7 @@ export default function Dashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [showCharts, setShowCharts] = useState(true);
+  const [weeklyReviewOpen, setWeeklyReviewOpen] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -153,18 +158,26 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Failure Condition Alert */}
+      {/* Failure Condition Alert with Weekly Review */}
       <Card className="bg-destructive/10 border-destructive/30">
-        <CardContent className="p-4 flex items-start gap-3">
-          <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold text-foreground">2026 Failure Condition Check</p>
-            <p className="text-sm text-muted-foreground">
-              "If I'm busy but no one comes to me for access, deals, or advice — I've failed."
-            </p>
+        <CardContent className="p-4 flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-foreground">2026 Failure Condition Check</p>
+              <p className="text-sm text-muted-foreground">
+                "If I'm busy but no one comes to me for access, deals, or advice — I've failed."
+              </p>
+            </div>
           </div>
+          <Button variant="outline" size="sm" onClick={() => setWeeklyReviewOpen(true)}>
+            <BookOpen className="h-4 w-4 mr-2" />
+            Weekly Review
+          </Button>
         </CardContent>
       </Card>
+
+      <WeeklyReview open={weeklyReviewOpen} onOpenChange={setWeeklyReviewOpen} />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -289,6 +302,9 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Goals Tracker */}
+      <GoalTracker />
 
       {/* Strategic Filter Reminder */}
       <Card className="bg-muted/30 border-border/50">
