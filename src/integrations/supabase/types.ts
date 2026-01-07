@@ -497,6 +497,48 @@ export type Database = {
           },
         ]
       }
+      weekly_reviews: {
+        Row: {
+          created_at: string
+          failure_condition_met: boolean | null
+          goal_progress_notes: string | null
+          id: string
+          losses: string | null
+          next_week_priorities: string | null
+          reflections: string | null
+          updated_at: string
+          user_id: string
+          week_start_date: string
+          wins: string | null
+        }
+        Insert: {
+          created_at?: string
+          failure_condition_met?: boolean | null
+          goal_progress_notes?: string | null
+          id?: string
+          losses?: string | null
+          next_week_priorities?: string | null
+          reflections?: string | null
+          updated_at?: string
+          user_id: string
+          week_start_date: string
+          wins?: string | null
+        }
+        Update: {
+          created_at?: string
+          failure_condition_met?: boolean | null
+          goal_progress_notes?: string | null
+          id?: string
+          losses?: string | null
+          next_week_priorities?: string | null
+          reflections?: string | null
+          updated_at?: string
+          user_id?: string
+          week_start_date?: string
+          wins?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

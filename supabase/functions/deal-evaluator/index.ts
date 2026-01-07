@@ -154,6 +154,32 @@ Answer as if you are the user's trusted investment advisor, using their own lang
         userPrompt = deal.message || "How should I think about this deal?";
         break;
 
+      case "insight":
+        systemPrompt = `You are a thought leadership content creator for a Saudi-based pre-seed investor. You help create compelling insights and content that:
+
+1. Demonstrates deep expertise in the Saudi startup ecosystem
+2. Aligns with Vision 2030 themes
+3. Provides actionable value to founders, other investors, and ecosystem players
+4. Builds the author's reputation as a trusted, thoughtful capital allocator
+
+Writing style:
+- Concise and punchy
+- Data-driven when possible
+- Contrarian takes welcome
+- Avoid jargon and buzzwords
+- Focus on lessons learned and pattern recognition`;
+
+        userPrompt = `Generate a short-form insight (300-500 words) suitable for LinkedIn or a newsletter. Pick a topic from:
+- Pre-seed investing lessons in MENA
+- Founder evaluation frameworks
+- Saudi startup ecosystem trends
+- Vision 2030 investment opportunities
+- Common founder mistakes and how to avoid them
+- Building in emerging markets vs. established ones
+
+Write the content ready to publish. Include a compelling hook in the first line.`;
+        break;
+
       default:
         throw new Error("Unknown action");
     }

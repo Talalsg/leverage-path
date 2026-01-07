@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
-type ActivityType = 'deal_created' | 'deal_updated' | 'ai_evaluation' | 'contact_added' | 'touchpoint_logged' | 'insight_published' | 'portfolio_added' | 'pattern_created';
+type ActivityType = 'deal_created' | 'deal_updated' | 'ai_evaluation' | 'contact_added' | 'touchpoint_logged' | 'insight_published' | 'insight_created' | 'portfolio_added' | 'pattern_created';
 
 interface LogActivityParams {
   type: ActivityType;
