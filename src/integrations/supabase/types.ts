@@ -47,6 +47,47 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_evaluations: {
+        Row: {
+          created_at: string
+          deal_id: string | null
+          evaluation_type: string
+          id: string
+          input_data: Json | null
+          model_used: string | null
+          output_data: Json | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id?: string | null
+          evaluation_type: string
+          id?: string
+          input_data?: Json | null
+          model_used?: string | null
+          output_data?: Json | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string | null
+          evaluation_type?: string
+          id?: string
+          input_data?: Json | null
+          model_used?: string | null
+          output_data?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_evaluations_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           created_at: string
@@ -101,10 +142,48 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_patterns: {
+        Row: {
+          created_at: string
+          id: string
+          negative_signals: string[] | null
+          pattern_name: string
+          positive_signals: string[] | null
+          updated_at: string
+          user_id: string
+          weight: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          negative_signals?: string[] | null
+          pattern_name: string
+          positive_signals?: string[] | null
+          updated_at?: string
+          user_id: string
+          weight?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          negative_signals?: string[] | null
+          pattern_name?: string
+          positive_signals?: string[] | null
+          updated_at?: string
+          user_id?: string
+          weight?: number | null
+        }
+        Relationships: []
+      }
       deals: {
         Row: {
+          ai_analysis: string | null
+          ai_memo: string | null
+          ai_score: number | null
+          backtest_result: Json | null
           company_name: string
           created_at: string
+          crunchbase_data: Json | null
           decision_reason: string | null
           deck_url: string | null
           equity_offered: number | null
@@ -112,11 +191,14 @@ export type Database = {
           failure_modes: string | null
           founder_execution_score: number | null
           founder_linkedin: string | null
+          founder_linkedin_data: Json | null
           founder_name: string | null
           founder_sales_ability: number | null
           id: string
           iteration_speed: number | null
           notes: string | null
+          outcome: string | null
+          outcome_notes: string | null
           overall_score: number | null
           sector: string | null
           stage: string | null
@@ -126,8 +208,13 @@ export type Database = {
           vision_2030_alignment: number | null
         }
         Insert: {
+          ai_analysis?: string | null
+          ai_memo?: string | null
+          ai_score?: number | null
+          backtest_result?: Json | null
           company_name: string
           created_at?: string
+          crunchbase_data?: Json | null
           decision_reason?: string | null
           deck_url?: string | null
           equity_offered?: number | null
@@ -135,11 +222,14 @@ export type Database = {
           failure_modes?: string | null
           founder_execution_score?: number | null
           founder_linkedin?: string | null
+          founder_linkedin_data?: Json | null
           founder_name?: string | null
           founder_sales_ability?: number | null
           id?: string
           iteration_speed?: number | null
           notes?: string | null
+          outcome?: string | null
+          outcome_notes?: string | null
           overall_score?: number | null
           sector?: string | null
           stage?: string | null
@@ -149,8 +239,13 @@ export type Database = {
           vision_2030_alignment?: number | null
         }
         Update: {
+          ai_analysis?: string | null
+          ai_memo?: string | null
+          ai_score?: number | null
+          backtest_result?: Json | null
           company_name?: string
           created_at?: string
+          crunchbase_data?: Json | null
           decision_reason?: string | null
           deck_url?: string | null
           equity_offered?: number | null
@@ -158,11 +253,14 @@ export type Database = {
           failure_modes?: string | null
           founder_execution_score?: number | null
           founder_linkedin?: string | null
+          founder_linkedin_data?: Json | null
           founder_name?: string | null
           founder_sales_ability?: number | null
           id?: string
           iteration_speed?: number | null
           notes?: string | null
+          outcome?: string | null
+          outcome_notes?: string | null
           overall_score?: number | null
           sector?: string | null
           stage?: string | null
