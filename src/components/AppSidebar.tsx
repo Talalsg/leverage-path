@@ -13,6 +13,7 @@ import {
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { AlertsPanel } from '@/components/AlertsPanel';
 import {
   Sidebar,
   SidebarContent,
@@ -107,11 +108,12 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-4 border-t border-sidebar-border">
-        {!collapsed && user && (
-          <div className="mb-3 px-2">
-            <p className="text-xs text-sidebar-foreground/50 truncate">{user.email}</p>
-          </div>
-        )}
+        <div className="flex items-center justify-between mb-3">
+          {!collapsed && user && (
+            <p className="text-xs text-sidebar-foreground/50 truncate flex-1">{user.email}</p>
+          )}
+          <AlertsPanel />
+        </div>
         <Button
           variant="ghost"
           onClick={signOut}

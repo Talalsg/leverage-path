@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { DashboardCharts } from '@/components/DashboardCharts';
 import { 
   Target, 
   Briefcase, 
@@ -12,15 +12,26 @@ import {
   TrendingUp,
   AlertTriangle,
   Calendar,
-  ArrowUpRight
+  ArrowUpRight,
+  BarChart3
 } from 'lucide-react';
 import { format } from 'date-fns';
+
+interface Deal {
+  id: string;
+  stage: string | null;
+  outcome: string | null;
+  ai_score: number | null;
+  sector: string | null;
+  created_at: string;
+}
 
 interface DashboardStats {
   dealsInPipeline: number;
   portfolioPositions: number;
   keyRelationships: number;
   insightsPublished: number;
+  deals: Deal[];
   recentActivities: Array<{
     id: string;
     type: string;
@@ -50,16 +61,19 @@ export default function Dashboard() {
     portfolioPositions: 0,
     keyRelationships: 0,
     insightsPublished: 0,
+    deals: [],
     recentActivities: [],
   });
   const [loading, setLoading] = useState(true);
+  const [showCharts, setShowCharts] = useState(true);
 
   useEffect(() => {
     if (!user) return;
     
     const fetchStats = async () => {
-      const [dealsResult, portfolioResult, contactsResult, insightsResult, activitiesResult] = await Promise.all([
+      const [dealsResult, dealsDataResult, portfolioResult, contactsResult, insightsResult, activitiesResult] = await Promise.all([
         supabase.from('deals').select('id', { count: 'exact' }).eq('user_id', user.id).not('stage', 'in', '("closed","rejected")'),
+        supabase.from('deals').select('id, stage, outcome, ai_score, sector, created_at').eq('user_id', user.id),
         supabase.from('portfolio').select('id', { count: 'exact' }).eq('user_id', user.id).eq('status', 'active'),
         supabase.from('contacts').select('id', { count: 'exact' }).eq('user_id', user.id).eq('is_key_ten', true),
         supabase.from('insights').select('id', { count: 'exact' }).eq('user_id', user.id).eq('status', 'published'),
@@ -71,6 +85,7 @@ export default function Dashboard() {
         portfolioPositions: portfolioResult.count || 0,
         keyRelationships: contactsResult.count || 0,
         insightsPublished: insightsResult.count || 0,
+        deals: (dealsDataResult.data as Deal[]) || [],
         recentActivities: activitiesResult.data || [],
       });
       setLoading(false);
@@ -170,6 +185,32 @@ export default function Dashboard() {
           </Card>
         ))}
       </div>
+
+      {/* Analytics Charts */}
+      {stats.deals.length > 0 && (
+        <Card className="bg-card border-border/50">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                Deal Analytics
+              </CardTitle>
+              <Badge 
+                variant="outline" 
+                className="cursor-pointer"
+                onClick={() => setShowCharts(!showCharts)}
+              >
+                {showCharts ? 'Hide' : 'Show'}
+              </Badge>
+            </div>
+          </CardHeader>
+          {showCharts && (
+            <CardContent>
+              <DashboardCharts deals={stats.deals} />
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Quarterly Focus */}

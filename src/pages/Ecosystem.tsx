@@ -8,8 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Users, Star } from 'lucide-react';
+import { Plus, Users, Star, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { TouchpointLogger, getDecayStatus } from '@/components/TouchpointLogger';
+import { useActivityLogger } from '@/hooks/useActivityLogger';
 
 type Tier = 'gatekeeper' | 'capital_allocator' | 'founder' | 'advisor' | 'connector';
 
@@ -35,6 +37,7 @@ const tiers: { key: Tier; label: string; color: string }[] = [
 export default function Ecosystem() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { logActivity } = useActivityLogger();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -51,15 +54,22 @@ export default function Ecosystem() {
 
   const handleCreate = async () => {
     if (!user || !formData.name) return;
-    const { error } = await supabase.from('contacts').insert({
+    const { data, error } = await supabase.from('contacts').insert({
       user_id: user.id,
       name: formData.name,
       organization: formData.organization || null,
       role: formData.role || null,
       tier: formData.tier,
-    });
-    if (error) { toast({ title: 'Error', description: error.message, variant: 'destructive' }); }
-    else { toast({ title: 'Contact added' }); setDialogOpen(false); setFormData({ name: '', organization: '', role: '', tier: 'connector' }); fetchContacts(); }
+    }).select().single();
+    if (error) { 
+      toast({ title: 'Error', description: error.message, variant: 'destructive' }); 
+    } else { 
+      toast({ title: 'Contact added' }); 
+      logActivity({ type: 'contact_added', title: `Added ${formData.name}`, entityType: 'contact', entityId: data?.id });
+      setDialogOpen(false); 
+      setFormData({ name: '', organization: '', role: '', tier: 'connector' }); 
+      fetchContacts(); 
+    }
   };
 
   const toggleKeyTen = async (id: string, current: boolean) => {
@@ -110,6 +120,7 @@ export default function Ecosystem() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {contacts.map(contact => {
           const tierInfo = tiers.find(t => t.key === contact.tier);
+          const decay = getDecayStatus(contact.last_touchpoint);
           return (
             <Card key={contact.id} className="bg-card border-border/50 hover:border-primary/30 transition-colors">
               <CardContent className="p-5">
@@ -124,10 +135,16 @@ export default function Ecosystem() {
                   </div>
                   <Badge className={tierInfo?.color}>{tierInfo?.label}</Badge>
                 </div>
-                <div className="mt-4 flex gap-2">
+                {/* Decay Indicator */}
+                <div className={`mt-3 flex items-center gap-2 text-xs ${decay.color}`}>
+                  <Clock className="h-3 w-3" />
+                  <span>{decay.label}</span>
+                </div>
+                <div className="mt-4 flex gap-2 flex-wrap">
                   <Button size="sm" variant="outline" onClick={() => toggleKeyTen(contact.id, contact.is_key_ten)}>
                     {contact.is_key_ten ? 'Remove from Key 10' : 'Add to Key 10'}
                   </Button>
+                  <TouchpointLogger contactId={contact.id} contactName={contact.name} onLogged={fetchContacts} />
                 </div>
               </CardContent>
             </Card>
