@@ -28,6 +28,7 @@ import { useActivityLogger } from '@/hooks/useActivityLogger';
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
 import { SearchFilter } from '@/components/SearchFilter';
 import { EditDealModal } from '@/components/EditDealModal';
+import { DealDetailsModal } from '@/components/DealDetailsModal';
 
 type DealStage = 'review' | 'evaluating' | 'passed' | 'term_sheet' | 'closed' | 'rejected';
 type DealOutcome = 'win' | 'miss' | 'regret' | 'noise' | 'pending';
@@ -40,8 +41,11 @@ interface Deal {
   valuation_usd: number | null;
   equity_offered: number | null;
   founder_name: string | null;
+  founder_linkedin: string | null;
   overall_score: number | null;
   ai_score: number | null;
+  ai_analysis: string | null;
+  ai_memo: string | null;
   outcome: string | null;
   notes: string | null;
   created_at: string;
@@ -106,6 +110,10 @@ export default function Deals() {
   // Edit state
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [dealToEdit, setDealToEdit] = useState<Deal | null>(null);
+
+  // Details view state
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [dealToView, setDealToView] = useState<Deal | null>(null);
 
   // Comparison state
   const [selectedDeals, setSelectedDeals] = useState<Set<string>>(new Set());
@@ -220,6 +228,11 @@ export default function Deals() {
   const openEditModal = (deal: Deal) => {
     setDealToEdit(deal);
     setEditModalOpen(true);
+  };
+
+  const openDetailsModal = (deal: Deal) => {
+    setDealToView(deal);
+    setDetailsModalOpen(true);
   };
 
   const toggleDealSelection = (dealId: string) => {
@@ -381,7 +394,12 @@ export default function Deals() {
                               <Checkbox checked={selectedDeals.has(deal.id)} onCheckedChange={() => toggleDealSelection(deal.id)} className="mt-0.5" />
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-start justify-between">
-                                  <p className="font-medium text-sm truncate flex-1">{deal.company_name}</p>
+                                  <button 
+                                    onClick={() => openDetailsModal(deal)} 
+                                    className="font-medium text-sm truncate flex-1 text-left hover:text-primary hover:underline cursor-pointer"
+                                  >
+                                    {deal.company_name}
+                                  </button>
                                   {deal.ai_score && <Badge variant="outline" className="text-xs ml-1"><Brain className="h-3 w-3 mr-1 text-primary-foreground" />{deal.ai_score}</Badge>}
                                 </div>
                                 {deal.sector && <p className="text-xs text-muted-foreground">{deal.sector}</p>}
@@ -445,6 +463,7 @@ export default function Deals() {
       <DealComparison deals={getSelectedDealsArray()} open={comparisonOpen} onOpenChange={setComparisonOpen} />
       <CreatePortfolioFromDealModal deal={dealToConvert} open={portfolioConversionOpen} onOpenChange={setPortfolioConversionOpen} onComplete={fetchDeals} />
       <EditDealModal deal={dealToEdit} open={editModalOpen} onOpenChange={setEditModalOpen} onSaved={fetchDeals} />
+      <DealDetailsModal deal={dealToView} open={detailsModalOpen} onOpenChange={setDetailsModalOpen} onSaved={fetchDeals} />
       <DeleteConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} onConfirm={handleDelete} title="Delete Deal" itemName={dealToDelete?.company_name} loading={deleting} />
     </div>
   );
