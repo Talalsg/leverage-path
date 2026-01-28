@@ -298,7 +298,7 @@ export default function Deals() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3">
+          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3 text-foreground">
             Deal Flow
             <Badge className="bg-primary/10 text-primary text-xs">
               <Sparkles className="h-3 w-3 mr-1" />AI-Powered
@@ -442,8 +442,8 @@ export default function Deals() {
                         {/* Stage Header */}
                         <div className="flex items-center gap-2 mb-3 px-1">
                           <div className={`h-2.5 w-2.5 rounded-full ${stage.color}`} />
-                          <span className="font-semibold text-sm">{stage.label}</span>
-                          <Badge variant="secondary" className="ml-auto text-xs h-5 px-1.5">
+                          <span className="font-semibold text-sm text-foreground">{stage.label}</span>
+                          <Badge variant="secondary" className="ml-auto text-xs h-5 px-1.5 text-secondary-foreground">
                             {stage.deals.length}
                           </Badge>
                         </div>
@@ -473,7 +473,7 @@ export default function Deals() {
                                   <div className="flex-1 min-w-0">
                                     <button 
                                       onClick={() => openDetailsModal(deal)} 
-                                      className="font-medium text-sm text-left hover:text-primary transition-colors line-clamp-2 w-full"
+                                      className="font-medium text-sm text-left text-card-foreground hover:text-primary transition-colors line-clamp-2 w-full"
                                     >
                                       {deal.company_name}
                                     </button>
@@ -527,7 +527,7 @@ export default function Deals() {
                                   <Button 
                                     variant="ghost" 
                                     size="sm" 
-                                    className="flex-1 h-7 text-xs hover:bg-primary/10 hover:text-primary" 
+                                    className="flex-1 h-7 text-xs text-card-foreground hover:bg-primary/10 hover:text-primary" 
                                     onClick={() => openEvaluator(deal)}
                                   >
                                     <Brain className="h-3 w-3 mr-1" />Evaluate
