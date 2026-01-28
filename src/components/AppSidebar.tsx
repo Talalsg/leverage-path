@@ -14,6 +14,7 @@ import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { AlertsPanel } from '@/components/AlertsPanel';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   Sidebar,
   SidebarContent,
@@ -107,8 +108,11 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4 border-t border-sidebar-border">
-        <div className="flex items-center justify-between mb-3">
+      <SidebarFooter className="p-4 border-t border-sidebar-border space-y-3">
+        {/* Theme Toggle */}
+        <ThemeToggle collapsed={collapsed} />
+        
+        <div className="flex items-center justify-between">
           {!collapsed && user && (
             <p className="text-xs text-sidebar-foreground/50 truncate flex-1">{user.email}</p>
           )}

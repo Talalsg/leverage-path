@@ -145,6 +145,146 @@
     --stage-closed: 160 80% 40%;
     --stage-rejected: 0 60% 55%;
   }
+
+  /* Evening Mode - Warm amber/orange tones for comfortable evening viewing */
+  .evening {
+    --background: 25 30% 8%;
+    --foreground: 30 15% 90%;
+
+    --card: 25 25% 12%;
+    --card-foreground: 30 15% 90%;
+
+    --popover: 25 25% 12%;
+    --popover-foreground: 30 15% 90%;
+
+    --primary: 30 85% 55%;
+    --primary-foreground: 30 90% 5%;
+
+    --secondary: 25 20% 18%;
+    --secondary-foreground: 30 15% 88%;
+
+    --muted: 25 18% 16%;
+    --muted-foreground: 30 12% 55%;
+
+    --accent: 35 80% 50%;
+    --accent-foreground: 35 90% 5%;
+
+    --destructive: 0 65% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 25 18% 20%;
+    --input: 25 18% 22%;
+    --ring: 30 85% 55%;
+
+    --sidebar-background: 25 35% 5%;
+    --sidebar-foreground: 30 15% 78%;
+    --sidebar-primary: 30 85% 55%;
+    --sidebar-primary-foreground: 30 90% 5%;
+    --sidebar-accent: 25 22% 14%;
+    --sidebar-accent-foreground: 30 15% 88%;
+    --sidebar-border: 25 20% 16%;
+    --sidebar-ring: 30 85% 55%;
+
+    /* Custom semantic colors */
+    --success: 140 60% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 45 90% 55%;
+    --warning-foreground: 45 95% 10%;
+    --info: 200 65% 55%;
+    --info-foreground: 0 0% 100%;
+
+    /* Chart colors */
+    --chart-1: 30 85% 55%;
+    --chart-2: 140 60% 45%;
+    --chart-3: 280 50% 55%;
+    --chart-4: 45 90% 55%;
+    --chart-5: 0 60% 55%;
+
+    /* Tier colors */
+    --tier-gatekeeper: 280 50% 55%;
+    --tier-capital: 140 60% 45%;
+    --tier-founder: 30 85% 55%;
+    --tier-advisor: 45 85% 55%;
+    --tier-connector: 200 12% 55%;
+
+    /* Stage colors */
+    --stage-review: 25 15% 50%;
+    --stage-evaluating: 200 60% 50%;
+    --stage-passed: 140 60% 45%;
+    --stage-term-sheet: 280 50% 55%;
+    --stage-closed: 140 70% 40%;
+    --stage-rejected: 0 55% 50%;
+  }
+
+  /* Night Mode - Deep midnight blue/purple for very low light */
+  .night {
+    --background: 240 30% 5%;
+    --foreground: 240 15% 88%;
+
+    --card: 240 28% 9%;
+    --card-foreground: 240 15% 88%;
+
+    --popover: 240 28% 9%;
+    --popover-foreground: 240 15% 88%;
+
+    --primary: 250 70% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 22% 15%;
+    --secondary-foreground: 240 15% 85%;
+
+    --muted: 240 20% 12%;
+    --muted-foreground: 240 12% 50%;
+
+    --accent: 280 60% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 60% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 20% 14%;
+    --input: 240 20% 16%;
+    --ring: 250 70% 60%;
+
+    --sidebar-background: 240 35% 3%;
+    --sidebar-foreground: 240 15% 75%;
+    --sidebar-primary: 250 70% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 25% 10%;
+    --sidebar-accent-foreground: 240 15% 85%;
+    --sidebar-border: 240 22% 12%;
+    --sidebar-ring: 250 70% 60%;
+
+    /* Custom semantic colors */
+    --success: 160 60% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 40 75% 50%;
+    --warning-foreground: 40 90% 10%;
+    --info: 210 65% 55%;
+    --info-foreground: 0 0% 100%;
+
+    /* Chart colors */
+    --chart-1: 250 70% 60%;
+    --chart-2: 160 60% 42%;
+    --chart-3: 280 60% 55%;
+    --chart-4: 40 75% 50%;
+    --chart-5: 0 55% 50%;
+
+    /* Tier colors */
+    --tier-gatekeeper: 280 55% 55%;
+    --tier-capital: 160 60% 42%;
+    --tier-founder: 250 70% 60%;
+    --tier-advisor: 40 75% 55%;
+    --tier-connector: 210 12% 50%;
+
+    /* Stage colors */
+    --stage-review: 240 15% 48%;
+    --stage-evaluating: 210 60% 50%;
+    --stage-passed: 160 60% 42%;
+    --stage-term-sheet: 280 55% 55%;
+    --stage-closed: 160 70% 38%;
+    --stage-rejected: 0 50% 48%;
+  }
 }
 
 @layer base {
