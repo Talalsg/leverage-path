@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Target, Brain, Sparkles, GitCompare, BookOpen } from 'lucide-react';
+import { Plus, Target, Brain, Sparkles, GitCompare, BookOpen, BarChart3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AIAdvisor } from '@/components/AIAdvisor';
 import { DealEvaluatorModal } from '@/components/DealEvaluatorModal';
@@ -21,7 +21,10 @@ import { CSVImport } from '@/components/CSVImport';
 import { PastPassAlert } from '@/components/PastPassAlert';
 import { DecisionJournalModal } from '@/components/DecisionJournalModal';
 import { DealVelocityChart } from '@/components/DealVelocityChart';
+import { DealFlowMetrics } from '@/components/DealFlowMetrics';
+import { CreatePortfolioFromDealModal } from '@/components/CreatePortfolioFromDealModal';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
+
 type DealStage = 'review' | 'evaluating' | 'passed' | 'term_sheet' | 'closed' | 'rejected';
 type DealOutcome = 'win' | 'miss' | 'regret' | 'noise' | 'pending';
 interface Deal {
@@ -123,6 +126,11 @@ export default function Deals() {
   const [selectedDeals, setSelectedDeals] = useState<Set<string>>(new Set());
   const [comparisonOpen, setComparisonOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('pipeline');
+  
+  // Portfolio conversion state
+  const [portfolioConversionOpen, setPortfolioConversionOpen] = useState(false);
+  const [dealToConvert, setDealToConvert] = useState<Deal | null>(null);
+
   const fetchDeals = async () => {
     if (!user) return;
     const {
@@ -175,9 +183,19 @@ export default function Deals() {
     }
   };
   const updateStage = async (id: string, stage: DealStage) => {
+    const deal = deals.find(d => d.id === id);
+    const previousStage = deal?.stage;
+    
     await supabase.from('deals').update({
       stage
     }).eq('id', id);
+    
+    // If stage changed to 'closed', prompt to create portfolio position
+    if (stage === 'closed' && previousStage !== 'closed' && deal) {
+      setDealToConvert(deal);
+      setPortfolioConversionOpen(true);
+    }
+    
     fetchDeals();
   };
   const updateOutcome = async (id: string, outcome: DealOutcome) => {
@@ -266,6 +284,10 @@ export default function Deals() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+          <TabsTrigger value="metrics">
+            <BarChart3 className="h-4 w-4 mr-1" />
+            Monthly Metrics
+          </TabsTrigger>
           <TabsTrigger value="patterns">Investment Patterns</TabsTrigger>
         </TabsList>
 
@@ -329,6 +351,10 @@ export default function Deals() {
           </div>
         </TabsContent>
 
+        <TabsContent value="metrics" className="mt-4">
+          <DealFlowMetrics deals={deals} />
+        </TabsContent>
+
         <TabsContent value="patterns" className="mt-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <PatternEditor />
@@ -340,5 +366,12 @@ export default function Deals() {
       <DealEvaluatorModal deal={selectedDeal} open={evaluatorOpen} onOpenChange={setEvaluatorOpen} onComplete={fetchDeals} />
 
       <DealComparison deals={getSelectedDealsArray()} open={comparisonOpen} onOpenChange={setComparisonOpen} />
+
+      <CreatePortfolioFromDealModal 
+        deal={dealToConvert} 
+        open={portfolioConversionOpen} 
+        onOpenChange={setPortfolioConversionOpen} 
+        onComplete={fetchDeals} 
+      />
     </div>;
 }
