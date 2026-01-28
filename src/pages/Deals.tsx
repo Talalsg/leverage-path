@@ -294,37 +294,88 @@ export default function Deals() {
   ];
 
   return (
-    <div className="p-6 lg:p-8 max-w-[1600px] mx-auto space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
+    <div className="p-4 md:p-6 lg:p-8 max-w-[1800px] mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3 text-white">
+          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3">
             Deal Flow
-            <Badge className="bg-primary/10 text-primary"><Sparkles className="h-3 w-3 mr-1" />AI-Powered</Badge>
+            <Badge className="bg-primary/10 text-primary text-xs">
+              <Sparkles className="h-3 w-3 mr-1" />AI-Powered
+            </Badge>
           </h1>
-          <p className="text-muted-foreground">The Rejection Engine — Evaluate and filter opportunities with AI</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            The Rejection Engine — Evaluate and filter opportunities
+          </p>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           <CSVImport onImportComplete={fetchDeals} />
           
           {selectedDeals.size >= 2 && (
-            <Button variant="outline" onClick={() => setComparisonOpen(true)}>
-              <GitCompare className="h-4 w-4 mr-2" />Compare ({selectedDeals.size})
+            <Button variant="outline" size="sm" onClick={() => setComparisonOpen(true)}>
+              <GitCompare className="h-4 w-4 mr-2" />
+              Compare ({selectedDeals.size})
             </Button>
           )}
           
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Add Deal</Button></DialogTrigger>
+            <DialogTrigger asChild>
+              <Button size="sm">
+                <Plus className="h-4 w-4 mr-2" />Add Deal
+              </Button>
+            </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Add New Deal</DialogTitle>
-                <DialogDescription>Enter the details of the new deal to add to your pipeline.</DialogDescription>
+                <DialogDescription>
+                  Enter the details of the new deal to add to your pipeline.
+                </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
-                <div><Label>Company Name *</Label><Input value={formData.company_name} onChange={e => setFormData({ ...formData, company_name: e.target.value })} /></div>
-                <div><Label>Sector</Label><Input value={formData.sector} onChange={e => setFormData({ ...formData, sector: e.target.value })} placeholder="e.g., Fintech, Health" /></div>
-                <div><Label>Valuation (USD)</Label><Input type="number" value={formData.valuation_usd} onChange={e => setFormData({ ...formData, valuation_usd: e.target.value })} /></div>
-                <div><Label>Founder Name</Label><Input value={formData.founder_name} onChange={e => setFormData({ ...formData, founder_name: e.target.value })} /></div>
-                <div><Label>Notes</Label><Textarea value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} placeholder="Initial thoughts..." /></div>
+              <div className="space-y-4 pt-2">
+                <div className="space-y-2">
+                  <Label>Company Name *</Label>
+                  <Input 
+                    value={formData.company_name} 
+                    onChange={e => setFormData({ ...formData, company_name: e.target.value })} 
+                    placeholder="Enter company name"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Sector</Label>
+                    <Input 
+                      value={formData.sector} 
+                      onChange={e => setFormData({ ...formData, sector: e.target.value })} 
+                      placeholder="e.g., Fintech" 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Valuation (USD)</Label>
+                    <Input 
+                      type="number" 
+                      value={formData.valuation_usd} 
+                      onChange={e => setFormData({ ...formData, valuation_usd: e.target.value })} 
+                      placeholder="5000000"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Founder Name</Label>
+                  <Input 
+                    value={formData.founder_name} 
+                    onChange={e => setFormData({ ...formData, founder_name: e.target.value })} 
+                    placeholder="Enter founder name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Notes</Label>
+                  <Textarea 
+                    value={formData.notes} 
+                    onChange={e => setFormData({ ...formData, notes: e.target.value })} 
+                    placeholder="Initial thoughts..."
+                    rows={3}
+                  />
+                </div>
                 {formData.company_name.length > 2 && <PastPassAlert companyName={formData.company_name} />}
                 <Button onClick={handleCreate} className="w-full">Add Deal</Button>
               </div>
@@ -344,114 +395,185 @@ export default function Deals() {
         onClearAll={clearAllFilters}
       />
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="pipeline">Pipeline ({filteredDeals.length})</TabsTrigger>
-          <TabsTrigger value="metrics"><BarChart3 className="h-4 w-4 mr-1" />Monthly Metrics</TabsTrigger>
-          <TabsTrigger value="patterns">Investment Patterns</TabsTrigger>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="bg-muted/50">
+          <TabsTrigger value="pipeline" className="data-[state=active]:bg-background">
+            Pipeline ({filteredDeals.length})
+          </TabsTrigger>
+          <TabsTrigger value="metrics" className="data-[state=active]:bg-background">
+            <BarChart3 className="h-4 w-4 mr-1.5" />Metrics
+          </TabsTrigger>
+          <TabsTrigger value="patterns" className="data-[state=active]:bg-background">
+            Patterns
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="pipeline" className="mt-4">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3 overflow-x-auto">
-                {loading ? (
-                  // Loading skeletons
-                  stages.map(stage => (
-                    <div key={stage.key} className="min-w-[180px]">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Skeleton className="h-3 w-3 rounded-full" />
-                        <Skeleton className="h-4 w-16" />
-                        <Skeleton className="h-5 w-6 ml-auto" />
+        <TabsContent value="pipeline" className="mt-0">
+          <div className="flex flex-col xl:flex-row gap-6">
+            {/* Kanban Board */}
+            <div className="flex-1 min-w-0">
+              <div className="overflow-x-auto pb-4">
+                <div className="flex gap-4" style={{ minWidth: 'max-content' }}>
+                  {loading ? (
+                    stages.map(stage => (
+                      <div key={stage.key} className="w-[220px] flex-shrink-0">
+                        <div className="flex items-center gap-2 mb-3 px-1">
+                          <Skeleton className="h-3 w-3 rounded-full" />
+                          <Skeleton className="h-4 w-16" />
+                          <Skeleton className="h-5 w-6 ml-auto" />
+                        </div>
+                        <div className="space-y-3">
+                          {[1, 2].map(i => (
+                            <Card key={i} className="bg-card border-border/50">
+                              <CardContent className="p-3 space-y-2">
+                                <Skeleton className="h-4 w-full" />
+                                <Skeleton className="h-3 w-2/3" />
+                                <Skeleton className="h-8 w-full" />
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        {[1, 2].map(i => (
-                          <Card key={i} className="bg-card border-border/50">
-                            <CardContent className="p-3 space-y-2">
-                              <Skeleton className="h-4 w-full" />
-                              <Skeleton className="h-3 w-2/3" />
-                              <Skeleton className="h-7 w-full" />
-                              <Skeleton className="h-7 w-full" />
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  dealsByStage.map(stage => (
-                  <div key={stage.key} className="min-w-[180px]">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className={`h-3 w-3 rounded-full ${stage.color}`} />
-                      <span className="font-semibold text-sm text-white">{stage.label}</span>
-                      <Badge variant="secondary" className="ml-auto text-xs">{stage.deals.length}</Badge>
-                    </div>
-                    <div className="space-y-2">
-                      {stage.deals.map(deal => (
-                        <Card key={deal.id} className={`bg-card border-border/50 hover:border-primary/30 transition-colors ${selectedDeals.has(deal.id) ? 'ring-2 ring-primary' : ''}`}>
-                          <CardContent className="p-3">
-                            <div className="flex items-start gap-2 mb-1">
-                              <Checkbox checked={selectedDeals.has(deal.id)} onCheckedChange={() => toggleDealSelection(deal.id)} className="mt-0.5" />
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-start justify-between">
-                                  <button 
-                                    onClick={() => openDetailsModal(deal)} 
-                                    className="font-medium text-sm truncate flex-1 text-left hover:text-primary hover:underline cursor-pointer"
-                                  >
-                                    {deal.company_name}
-                                  </button>
-                                  {deal.ai_score && <Badge variant="outline" className="text-xs ml-1"><Brain className="h-3 w-3 mr-1 text-primary-foreground" />{deal.ai_score}</Badge>}
-                                </div>
-                                {deal.sector && <p className="text-xs text-muted-foreground">{deal.sector}</p>}
-                                {deal.valuation_usd && <p className="text-xs text-accent mt-1">${(deal.valuation_usd / 1000000).toFixed(1)}M</p>}
-                              </div>
-                            </div>
-                            
-                            <div className="mt-2 space-y-1">
-                              <Select value={deal.stage} onValueChange={v => updateStage(deal.id, v as DealStage)}>
-                                <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                                <SelectContent>{stages.map(s => <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>)}</SelectContent>
-                              </Select>
-                              <Select value={deal.outcome || 'pending'} onValueChange={v => updateOutcome(deal.id, v as DealOutcome)}>
-                                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Tag outcome..." /></SelectTrigger>
-                                <SelectContent>{outcomes.map(o => <SelectItem key={o.key} value={o.key}>{o.label}</SelectItem>)}</SelectContent>
-                              </Select>
-                            </div>
+                    ))
+                  ) : (
+                    dealsByStage.map(stage => (
+                      <div key={stage.key} className="w-[220px] flex-shrink-0">
+                        {/* Stage Header */}
+                        <div className="flex items-center gap-2 mb-3 px-1">
+                          <div className={`h-2.5 w-2.5 rounded-full ${stage.color}`} />
+                          <span className="font-semibold text-sm">{stage.label}</span>
+                          <Badge variant="secondary" className="ml-auto text-xs h-5 px-1.5">
+                            {stage.deals.length}
+                          </Badge>
+                        </div>
 
-                            <div className="flex gap-1 mt-2">
-                              <Button variant="outline" size="sm" className="flex-1 h-7 text-xs" onClick={() => openEvaluator(deal)}>
-                                <Brain className="h-3 w-3 mr-1" />Evaluate
-                              </Button>
-                              <DecisionJournalModal dealId={deal.id} dealName={deal.company_name} onSaved={fetchDeals} />
-                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openEditModal(deal)}>
-                                <Pencil className="h-3 w-3" />
-                              </Button>
-                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => openDeleteDialog(deal)}>
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
+                        {/* Deal Cards */}
+                        <div className="space-y-3">
+                          {stage.deals.length === 0 && (
+                            <div className="border border-dashed border-border/50 rounded-lg p-4 text-center">
+                              <p className="text-xs text-muted-foreground">No deals</p>
                             </div>
-                          </CardContent>
-                        </Card>
-                    ))}
-                    </div>
-                  </div>
-                ))
-                )}
+                          )}
+                          {stage.deals.map(deal => (
+                            <Card 
+                              key={deal.id} 
+                              className={`bg-card border-border/50 hover:border-primary/40 transition-all duration-200 ${
+                                selectedDeals.has(deal.id) ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''
+                              }`}
+                            >
+                              <CardContent className="p-3 space-y-3">
+                                {/* Header Row */}
+                                <div className="flex items-start gap-2">
+                                  <Checkbox 
+                                    checked={selectedDeals.has(deal.id)} 
+                                    onCheckedChange={() => toggleDealSelection(deal.id)} 
+                                    className="mt-0.5 flex-shrink-0"
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <button 
+                                      onClick={() => openDetailsModal(deal)} 
+                                      className="font-medium text-sm text-left hover:text-primary transition-colors line-clamp-2 w-full"
+                                    >
+                                      {deal.company_name}
+                                    </button>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      {deal.sector && (
+                                        <span className="text-xs text-muted-foreground truncate">
+                                          {deal.sector}
+                                        </span>
+                                      )}
+                                      {deal.ai_score && (
+                                        <Badge variant="outline" className="text-[10px] h-4 px-1 ml-auto flex-shrink-0">
+                                          <Brain className="h-2.5 w-2.5 mr-0.5" />
+                                          {deal.ai_score}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    {deal.valuation_usd && (
+                                      <p className="text-xs font-medium text-accent mt-1">
+                                        ${(deal.valuation_usd / 1000000).toFixed(1)}M
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                {/* Dropdowns */}
+                                <div className="space-y-1.5">
+                                  <Select value={deal.stage} onValueChange={v => updateStage(deal.id, v as DealStage)}>
+                                    <SelectTrigger className="h-7 text-xs">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {stages.map(s => (
+                                        <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <Select value={deal.outcome || 'pending'} onValueChange={v => updateOutcome(deal.id, v as DealOutcome)}>
+                                    <SelectTrigger className="h-7 text-xs">
+                                      <SelectValue placeholder="Tag outcome..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {outcomes.map(o => (
+                                        <SelectItem key={o.key} value={o.key}>{o.label}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className="flex items-center gap-1 pt-1 border-t border-border/30">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="flex-1 h-7 text-xs hover:bg-primary/10 hover:text-primary" 
+                                    onClick={() => openEvaluator(deal)}
+                                  >
+                                    <Brain className="h-3 w-3 mr-1" />Evaluate
+                                  </Button>
+                                  <DecisionJournalModal dealId={deal.id} dealName={deal.company_name} onSaved={fetchDeals} />
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-7 w-7" 
+                                    onClick={() => openEditModal(deal)}
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10" 
+                                    onClick={() => openDeleteDialog(deal)}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="space-y-4">
+            {/* Sidebar */}
+            <div className="w-full xl:w-80 flex-shrink-0 space-y-4">
               <DealVelocityChart deals={filteredDeals} />
               <AIAdvisor />
             </div>
           </div>
         </TabsContent>
 
-        <TabsContent value="metrics" className="mt-4">
+        <TabsContent value="metrics" className="mt-0">
           <DealFlowMetrics deals={deals} />
         </TabsContent>
 
-        <TabsContent value="patterns" className="mt-4">
+        <TabsContent value="patterns" className="mt-0">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <PatternEditor />
             <AIAdvisor />
