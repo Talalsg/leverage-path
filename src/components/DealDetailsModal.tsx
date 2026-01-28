@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ExternalLink, FileText, Plus, Calendar, User, Building2, Target, TrendingUp, DollarSign, Briefcase, MapPin, Pencil, Trash2, Check, X } from 'lucide-react';
+import { Loader2, ExternalLink, FileText, Plus, Calendar, User, Building2, Target, TrendingUp, DollarSign, Briefcase, MapPin, Pencil, Trash2, Check, X, Users, Lightbulb, Rocket, Globe, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 
 type DealStage = 'review' | 'evaluating' | 'passed' | 'term_sheet' | 'closed' | 'rejected';
@@ -272,7 +272,7 @@ export function DealDetailsModal({ deal, open, onOpenChange, onSaved }: DealDeta
     return colors[stage] || 'bg-muted';
   };
 
-  // Parse structured intake data from notes
+  // Parse structured intake data from notes (matches edge function format)
   const parseIntakeData = (notes: string | null) => {
     if (!notes) return null;
     
@@ -281,26 +281,67 @@ export function DealDetailsModal({ deal, open, onOpenChange, onSaved }: DealDeta
     // Remove Analysis Notes section for parsing
     const cleanNotes = notes.replace(/## Analysis Notes\n[\s\S]*?(?=\n## |$)/, '').trim();
     
-    // Parse key fields from markdown format
-    const patterns = [
-      { key: 'problem', pattern: /## Problem Solved\n([\s\S]*?)(?=\n## |$)/ },
-      { key: 'traction', pattern: /## Traction\n([\s\S]*?)(?=\n## |$)/ },
-      { key: 'funding', pattern: /## Funding Needs\n([\s\S]*?)(?=\n## |$)/ },
-      { key: 'saudiAlignment', pattern: /## Saudi Arabia Alignment\n([\s\S]*?)(?=\n## |$)/ },
-      { key: 'whyNow', pattern: /## Why Now\?\n([\s\S]*?)(?=\n## |$)/ },
-      { key: 'teamAdvantage', pattern: /## Team Advantage\n([\s\S]*?)(?=\n## |$)/ },
-      { key: 'founderEmail', pattern: /\*\*Founder Email:\*\* (.+)/ },
-      { key: 'website', pattern: /\*\*Website:\*\* (.+)/ },
+    // Check if this is an intake submission
+    if (!cleanNotes.includes('## Intake Submission')) return null;
+    
+    // Parse the submitted timestamp
+    const submittedMatch = cleanNotes.match(/\*\*Submitted:\*\* (.+)/);
+    if (submittedMatch) data.submitted = submittedMatch[1].trim();
+    
+    // Parse all sections from the intake form format
+    const sectionPatterns = [
+      { key: 'oneSentence', pattern: /### One-Sentence Description\n([\s\S]*?)(?=\n### |$)/ },
+      { key: 'companyDescription', pattern: /### Company Description\n([\s\S]*?)(?=\n### |$)/ },
+      { key: 'keyInsight', pattern: /### Key Insight\n([\s\S]*?)(?=\n### |$)/ },
+      { key: 'targetCustomer', pattern: /### Target Customer\n([\s\S]*?)(?=\n### |$)/ },
+      { key: 'tractionHighlights', pattern: /### Traction Highlights\n([\s\S]*?)(?=\n### |$)/ },
+      { key: 'team', pattern: /### Team\n([\s\S]*?)(?=\n### |$)/ },
+      { key: 'funding', pattern: /### Funding\n([\s\S]*?)(?=\n### |$)/ },
+      { key: 'nextGoals', pattern: /### Goals \(Next 3-6 Months\)\n([\s\S]*?)(?=\n### |$)/ },
+      { key: 'saudiArabia', pattern: /### Saudi Arabia\n([\s\S]*?)(?=\n### |$)/ },
+      { key: 'revenue', pattern: /### Revenue\n([\s\S]*?)(?=\n### |$)/ },
+      { key: 'additionalNotes', pattern: /### Additional Notes\n([\s\S]*?)(?=\n### |$)/ },
+      { key: 'companyDetails', pattern: /### Company Details\n([\s\S]*?)(?=\n### |$)/ },
     ];
 
-    patterns.forEach(({ key, pattern }) => {
+    sectionPatterns.forEach(({ key, pattern }) => {
       const match = cleanNotes.match(pattern);
       if (match) {
-        data[key] = match[1].trim();
+        const content = match[1].trim();
+        if (content && content !== 'N/A') {
+          data[key] = content;
+        }
       }
     });
 
     return Object.keys(data).length > 0 ? data : null;
+  };
+
+  // Parse team details from the team section
+  const parseTeamDetails = (teamStr: string) => {
+    const structure = teamStr.match(/\*\*Structure:\*\* (.+)/)?.[1] || null;
+    const size = teamStr.match(/\*\*Size:\*\* (.+)/)?.[1] || null;
+    const roles = teamStr.match(/\*\*Roles:\*\* (.+)/)?.[1] || null;
+    return { structure, size, roles };
+  };
+
+  // Parse funding details
+  const parseFundingDetails = (fundingStr: string) => {
+    const isRaising = fundingStr.match(/\*\*Currently Raising:\*\* (.+)/)?.[1] || null;
+    const round = fundingStr.match(/\*\*Round:\*\* (.+)/)?.[1] || null;
+    const targetRaise = fundingStr.match(/\*\*Target Raise:\*\* (.+)/)?.[1] || null;
+    const existingInvestors = fundingStr.match(/\*\*Existing Investors:\*\* (.+)/)?.[1] || null;
+    const lookingFor = fundingStr.match(/\*\*Looking For:\*\* (.+)/)?.[1] || null;
+    return { isRaising, round, targetRaise, existingInvestors, lookingFor };
+  };
+
+  // Parse company details
+  const parseCompanyDetails = (detailsStr: string) => {
+    const headquarters = detailsStr.match(/\*\*Headquarters:\*\* (.+)/)?.[1] || null;
+    const yearFounded = detailsStr.match(/\*\*Year Founded:\*\* (.+)/)?.[1] || null;
+    const companyLinkedIn = detailsStr.match(/\*\*Company LinkedIn:\*\* (.+)/)?.[1] || null;
+    const cofounderLinkedIn = detailsStr.match(/\*\*Co-founder LinkedIn:\*\* (.+)/)?.[1] || null;
+    return { headquarters, yearFounded, companyLinkedIn, cofounderLinkedIn };
   };
 
   if (!deal) return null;
@@ -421,96 +462,276 @@ export function DealDetailsModal({ deal, open, onOpenChange, onSaved }: DealDeta
               {deal.founder_linkedin && (
                 <Button variant="outline" size="sm" asChild className="text-card-foreground">
                   <a href={deal.founder_linkedin} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-3 w-3 mr-2" />LinkedIn
+                    <ExternalLink className="h-3 w-3 mr-2" />Founder LinkedIn
                   </a>
                 </Button>
               )}
               {deckUrl && (
-                <Button variant="outline" size="sm" asChild className="text-card-foreground">
+                <Button variant="default" size="sm" asChild>
                   <a href={deckUrl} target="_blank" rel="noopener noreferrer">
                     <FileText className="h-3 w-3 mr-2" />
                     {loadingDeck ? 'Loading...' : 'View Pitch Deck'}
                   </a>
                 </Button>
               )}
-              {intakeData?.website && (
-                <Button variant="outline" size="sm" asChild className="text-card-foreground">
-                  <a href={intakeData.website.startsWith('http') ? intakeData.website : `https://${intakeData.website}`} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-3 w-3 mr-2" />Website
-                  </a>
-                </Button>
-              )}
+              {intakeData?.companyDetails && (() => {
+                const details = parseCompanyDetails(intakeData.companyDetails);
+                return details.companyLinkedIn && details.companyLinkedIn !== 'N/A' ? (
+                  <Button variant="outline" size="sm" asChild className="text-card-foreground">
+                    <a href={details.companyLinkedIn.startsWith('http') ? details.companyLinkedIn : `https://${details.companyLinkedIn}`} target="_blank" rel="noopener noreferrer">
+                      <Building2 className="h-3 w-3 mr-2" />Company LinkedIn
+                    </a>
+                  </Button>
+                ) : null;
+              })()}
             </div>
 
-            <Separator className="bg-border/50" />
-
-            {/* Structured Intake Data */}
+            {/* Structured Intake Data - Clean Layout */}
             {intakeData && (
-              <div className="space-y-4">
-                <h3 className="font-semibold text-foreground flex items-center gap-2">
-                  <Building2 className="h-4 w-4" />Startup Submission
-                </h3>
+              <>
+                <Separator className="bg-border/50" />
                 
-                <div className="grid gap-4">
-                  {intakeData.problem && (
-                    <Card className="bg-card border-border/50">
+                <div className="space-y-6">
+                  {/* Section Header */}
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-foreground flex items-center gap-2">
+                      <Rocket className="h-4 w-4 text-primary" />
+                      Startup Submission
+                    </h3>
+                    {intakeData.submitted && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {format(new Date(intakeData.submitted), 'MMM d, yyyy h:mm a')}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* One-Liner & Description */}
+                  {intakeData.oneSentence && (
+                    <Card className="bg-primary/5 border-primary/30">
                       <CardContent className="p-4">
-                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Problem Solved</h4>
-                        <p className="text-sm text-card-foreground">{intakeData.problem}</p>
-                      </CardContent>
-                    </Card>
-                  )}
-                  
-                  {intakeData.traction && (
-                    <Card className="bg-card border-border/50">
-                      <CardContent className="p-4">
-                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Traction</h4>
-                        <p className="text-sm text-card-foreground">{intakeData.traction}</p>
+                        <h4 className="text-xs font-medium text-primary uppercase tracking-wide mb-2 flex items-center gap-1">
+                          <Lightbulb className="h-3 w-3" />
+                          One-Liner
+                        </h4>
+                        <p className="text-base text-foreground font-medium">{intakeData.oneSentence}</p>
                       </CardContent>
                     </Card>
                   )}
 
+                  {intakeData.companyDescription && (
+                    <Card className="bg-card border-border/50">
+                      <CardContent className="p-4">
+                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                          Company Description
+                        </h4>
+                        <p className="text-sm text-card-foreground whitespace-pre-wrap">{intakeData.companyDescription}</p>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Key Insight */}
+                  {intakeData.keyInsight && (
+                    <Card className="bg-amber-500/10 border-amber-500/30">
+                      <CardContent className="p-4">
+                        <h4 className="text-xs font-medium text-amber-500 uppercase tracking-wide mb-2 flex items-center gap-1">
+                          <Lightbulb className="h-3 w-3" />
+                          Key Insight (Why Now?)
+                        </h4>
+                        <p className="text-sm text-card-foreground">{intakeData.keyInsight}</p>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Target & Traction Row */}
                   <div className="grid md:grid-cols-2 gap-4">
-                    {intakeData.funding && (
-                      <Card className="bg-card border-border/50">
-                        <CardContent className="p-4">
-                          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Funding Needs</h4>
-                          <p className="text-sm text-card-foreground">{intakeData.funding}</p>
-                        </CardContent>
-                      </Card>
-                    )}
-                    
-                    {intakeData.saudiAlignment && (
+                    {intakeData.targetCustomer && (
                       <Card className="bg-card border-border/50">
                         <CardContent className="p-4">
                           <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />Saudi Arabia Alignment
+                            <Target className="h-3 w-3" />
+                            Target Customer
                           </h4>
-                          <p className="text-sm text-card-foreground">{intakeData.saudiAlignment}</p>
+                          <p className="text-sm text-card-foreground font-medium">{intakeData.targetCustomer}</p>
+                        </CardContent>
+                      </Card>
+                    )}
+                    {intakeData.revenue && (
+                      <Card className="bg-card border-border/50">
+                        <CardContent className="p-4">
+                          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
+                            <DollarSign className="h-3 w-3" />
+                            Current Revenue
+                          </h4>
+                          <p className="text-sm text-card-foreground font-medium">{intakeData.revenue}</p>
                         </CardContent>
                       </Card>
                     )}
                   </div>
 
-                  {intakeData.whyNow && (
+                  {/* Traction Highlights */}
+                  {intakeData.tractionHighlights && (
                     <Card className="bg-card border-border/50">
                       <CardContent className="p-4">
-                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Why Now?</h4>
-                        <p className="text-sm text-card-foreground">{intakeData.whyNow}</p>
+                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
+                          <TrendingUp className="h-3 w-3" />
+                          Traction Highlights
+                        </h4>
+                        <p className="text-sm text-card-foreground">{intakeData.tractionHighlights}</p>
                       </CardContent>
                     </Card>
                   )}
 
-                  {intakeData.teamAdvantage && (
+                  {/* Team Section */}
+                  {intakeData.team && (() => {
+                    const team = parseTeamDetails(intakeData.team);
+                    return (
+                      <Card className="bg-card border-border/50">
+                        <CardContent className="p-4">
+                          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            Team
+                          </h4>
+                          <div className="grid grid-cols-3 gap-4">
+                            {team.structure && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">Structure</p>
+                                <p className="text-sm text-card-foreground font-medium">{team.structure}</p>
+                              </div>
+                            )}
+                            {team.size && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">Team Size</p>
+                                <p className="text-sm text-card-foreground font-medium">{team.size}</p>
+                              </div>
+                            )}
+                            {team.roles && (
+                              <div className="col-span-3 md:col-span-1">
+                                <p className="text-xs text-muted-foreground">Key Roles</p>
+                                <p className="text-sm text-card-foreground">{team.roles}</p>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })()}
+
+                  {/* Funding Section */}
+                  {intakeData.funding && (() => {
+                    const funding = parseFundingDetails(intakeData.funding);
+                    return (
+                      <Card className="bg-card border-border/50">
+                        <CardContent className="p-4">
+                          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-1">
+                            <DollarSign className="h-3 w-3" />
+                            Funding
+                          </h4>
+                          <div className="grid md:grid-cols-2 gap-4">
+                            {funding.isRaising && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">Currently Raising</p>
+                                <p className="text-sm text-card-foreground font-medium">{funding.isRaising}</p>
+                              </div>
+                            )}
+                            {funding.round && funding.round !== 'N/A' && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">Round</p>
+                                <p className="text-sm text-card-foreground font-medium">{funding.round}</p>
+                              </div>
+                            )}
+                            {funding.targetRaise && funding.targetRaise !== 'N/A' && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">Target Raise</p>
+                                <p className="text-sm text-card-foreground font-medium">{funding.targetRaise}</p>
+                              </div>
+                            )}
+                            {funding.existingInvestors && funding.existingInvestors !== 'N/A' && funding.existingInvestors !== 'None' && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">Existing Investors</p>
+                                <p className="text-sm text-card-foreground">{funding.existingInvestors}</p>
+                              </div>
+                            )}
+                            {funding.lookingFor && funding.lookingFor !== 'N/A' && (
+                              <div className="col-span-2">
+                                <p className="text-xs text-muted-foreground">Looking For</p>
+                                <p className="text-sm text-card-foreground">{funding.lookingFor}</p>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })()}
+
+                  {/* Goals & Saudi Alignment */}
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {intakeData.nextGoals && (
+                      <Card className="bg-card border-border/50">
+                        <CardContent className="p-4">
+                          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
+                            <Target className="h-3 w-3" />
+                            Goals (3-6 Months)
+                          </h4>
+                          <p className="text-sm text-card-foreground">{intakeData.nextGoals}</p>
+                        </CardContent>
+                      </Card>
+                    )}
+                    {intakeData.saudiArabia && (
+                      <Card className="bg-card border-border/50">
+                        <CardContent className="p-4">
+                          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            Saudi Arabia
+                          </h4>
+                          <p className="text-sm text-card-foreground">{intakeData.saudiArabia}</p>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+
+                  {/* Company Details */}
+                  {intakeData.companyDetails && (() => {
+                    const details = parseCompanyDetails(intakeData.companyDetails);
+                    return (
+                      <Card className="bg-muted/30 border-border/50">
+                        <CardContent className="p-4">
+                          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-1">
+                            <Globe className="h-3 w-3" />
+                            Company Details
+                          </h4>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {details.headquarters && details.headquarters !== 'N/A' && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">Headquarters</p>
+                                <p className="text-sm text-card-foreground font-medium">{details.headquarters}</p>
+                              </div>
+                            )}
+                            {details.yearFounded && details.yearFounded !== 'N/A' && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">Founded</p>
+                                <p className="text-sm text-card-foreground font-medium">{details.yearFounded}</p>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })()}
+
+                  {/* Additional Notes */}
+                  {intakeData.additionalNotes && (
                     <Card className="bg-card border-border/50">
                       <CardContent className="p-4">
-                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Team Advantage</h4>
-                        <p className="text-sm text-card-foreground">{intakeData.teamAdvantage}</p>
+                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                          Additional Notes from Founder
+                        </h4>
+                        <p className="text-sm text-card-foreground whitespace-pre-wrap">{intakeData.additionalNotes}</p>
                       </CardContent>
                     </Card>
                   )}
                 </div>
-              </div>
+              </>
             )}
 
             {/* Exit Potential & Failure Modes */}
