@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,10 +9,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Lightbulb, Sparkles, Loader2, Trash2 } from 'lucide-react';
+import { Plus, Lightbulb, Sparkles, Loader2, Trash2, Pencil, Heart, MessageSquare, Share2, TrendingUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
+import { SearchFilter } from '@/components/SearchFilter';
+import { EditInsightModal } from '@/components/EditInsightModal';
 
 type Status = 'idea' | 'draft' | 'published';
 
@@ -24,7 +26,24 @@ interface Insight {
   platform: string | null;
   publish_date: string | null;
   engagement_likes: number;
+  engagement_comments: number;
+  engagement_shares: number;
+  inbound_inquiries: number;
 }
+
+const statusOptions = [
+  { value: 'idea', label: 'Idea' },
+  { value: 'draft', label: 'Draft' },
+  { value: 'published', label: 'Published' },
+];
+
+const platformOptions = [
+  { value: 'linkedin', label: 'LinkedIn' },
+  { value: 'twitter', label: 'Twitter/X' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'substack', label: 'Substack' },
+  { value: 'blog', label: 'Personal Blog' },
+];
 
 export default function Insights() {
   const { user } = useAuth();
@@ -36,6 +55,14 @@ export default function Insights() {
   const [formData, setFormData] = useState({ title: '', content: '' });
   const [generatingAI, setGeneratingAI] = useState(false);
   
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({});
+
+  // Edit state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [insightToEdit, setInsightToEdit] = useState<Insight | null>(null);
+
   // Delete state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [insightToDelete, setInsightToDelete] = useState<Insight | null>(null);
@@ -49,6 +76,32 @@ export default function Insights() {
   };
 
   useEffect(() => { fetchInsights(); }, [user]);
+
+  // Filter insights based on search and filters
+  const filteredInsights = useMemo(() => {
+    return insights.filter(insight => {
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesSearch = 
+          insight.title.toLowerCase().includes(query) ||
+          (insight.content?.toLowerCase() || '').includes(query);
+        if (!matchesSearch) return false;
+      }
+
+      // Status filter
+      if (filterValues.status && filterValues.status !== 'all') {
+        if (insight.status !== filterValues.status) return false;
+      }
+
+      // Platform filter
+      if (filterValues.platform && filterValues.platform !== 'all') {
+        if (insight.platform !== filterValues.platform) return false;
+      }
+
+      return true;
+    });
+  }, [insights, searchQuery, filterValues]);
 
   const handleCreate = async () => {
     if (!user || !formData.title) return;
@@ -96,13 +149,17 @@ export default function Insights() {
     }
   };
 
+  const openEditModal = (insight: Insight) => {
+    setInsightToEdit(insight);
+    setEditModalOpen(true);
+  };
+
   const handleDelete = async () => {
     if (!insightToDelete) return;
     setDeleting(true);
     
     try {
       const { error } = await supabase.from('insights').delete().eq('id', insightToDelete.id);
-      
       if (error) throw error;
       
       toast({ title: 'Insight deleted', description: `"${insightToDelete.title}" has been removed.` });
@@ -121,7 +178,18 @@ export default function Insights() {
     setDeleteDialogOpen(true);
   };
 
-  const published = insights.filter(i => i.status === 'published').length;
+  const clearAllFilters = () => {
+    setSearchQuery('');
+    setFilterValues({});
+  };
+
+  const published = filteredInsights.filter(i => i.status === 'published').length;
+  const totalEngagement = filteredInsights.reduce((sum, i) => sum + i.engagement_likes + i.engagement_comments + i.engagement_shares, 0);
+
+  const filterOptions = [
+    { key: 'status', label: 'Status', options: statusOptions },
+    { key: 'platform', label: 'Platform', options: platformOptions },
+  ];
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
@@ -149,30 +217,75 @@ export default function Insights() {
         </div>
       </div>
 
-      <Card className="bg-card border-border/50"><CardContent className="p-5 flex items-center justify-between">
-        <div><p className="text-sm text-muted-foreground">Published This Quarter</p><p className="text-3xl font-bold text-warning">{published}</p></div>
-        <div className="text-right"><p className="text-sm text-muted-foreground">Target</p><p className="text-xl font-semibold">4-6</p></div>
-      </CardContent></Card>
+      {/* Search and Filter */}
+      <SearchFilter
+        placeholder="Search insights by title or content..."
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        filters={filterOptions}
+        filterValues={filterValues}
+        onFilterChange={(key, value) => setFilterValues(prev => ({ ...prev, [key]: value }))}
+        onClearAll={clearAllFilters}
+      />
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="bg-card border-border/50">
+          <CardContent className="p-5">
+            <p className="text-sm text-muted-foreground">Published This Quarter</p>
+            <p className="text-3xl font-bold text-warning">{published}</p>
+            <p className="text-xs text-muted-foreground/70">Target: 4-6</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-card border-border/50">
+          <CardContent className="p-5">
+            <p className="text-sm text-muted-foreground">Total Engagement</p>
+            <p className="text-3xl font-bold text-accent">{totalEngagement}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-card border-border/50">
+          <CardContent className="p-5">
+            <p className="text-sm text-muted-foreground">Inbound Inquiries</p>
+            <p className="text-3xl font-bold text-primary">{filteredInsights.reduce((sum, i) => sum + i.inbound_inquiries, 0)}</p>
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {insights.map(insight => (
-          <Card key={insight.id} className="bg-card border-border/50">
+        {filteredInsights.map(insight => (
+          <Card key={insight.id} className="bg-card border-border/50 hover:border-primary/30 transition-colors">
             <CardContent className="p-5">
-              <div className="flex items-start justify-between">
-                <Badge variant={insight.status === 'published' ? 'default' : insight.status === 'draft' ? 'secondary' : 'outline'} className="mb-2">
-                  {insight.status}
-                </Badge>
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                  onClick={() => openDeleteDialog(insight)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant={insight.status === 'published' ? 'default' : insight.status === 'draft' ? 'secondary' : 'outline'}>
+                    {insight.status}
+                  </Badge>
+                  {insight.platform && (
+                    <Badge variant="outline" className="text-xs">{insight.platform}</Badge>
+                  )}
+                </div>
+                <div className="flex gap-1">
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditModal(insight)}>
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => openDeleteDialog(insight)}>
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
               </div>
               <p className="font-semibold">{insight.title}</p>
               {insight.content && <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{insight.content}</p>}
+              
+              {insight.status === 'published' && (
+                <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1"><Heart className="h-3 w-3" />{insight.engagement_likes}</span>
+                  <span className="flex items-center gap-1"><MessageSquare className="h-3 w-3" />{insight.engagement_comments}</span>
+                  <span className="flex items-center gap-1"><Share2 className="h-3 w-3" />{insight.engagement_shares}</span>
+                  {insight.inbound_inquiries > 0 && (
+                    <span className="flex items-center gap-1 text-primary"><TrendingUp className="h-3 w-3" />{insight.inbound_inquiries} inbound</span>
+                  )}
+                </div>
+              )}
+
               <div className="mt-4">
                 <Select value={insight.status} onValueChange={v => updateStatus(insight.id, v as Status, insight.title)}>
                   <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
@@ -186,19 +299,13 @@ export default function Insights() {
             </CardContent>
           </Card>
         ))}
-        {insights.length === 0 && !loading && (
-          <Card className="col-span-full bg-muted/30 border-dashed"><CardContent className="p-8 text-center text-muted-foreground">No insights yet. Capture your first idea.</CardContent></Card>
+        {filteredInsights.length === 0 && !loading && (
+          <Card className="col-span-full bg-muted/30 border-dashed"><CardContent className="p-8 text-center text-muted-foreground">No insights found. {searchQuery || Object.keys(filterValues).length > 0 ? 'Try adjusting your filters.' : 'Capture your first idea.'}</CardContent></Card>
         )}
       </div>
 
-      <DeleteConfirmDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        onConfirm={handleDelete}
-        title="Delete Insight"
-        itemName={insightToDelete?.title}
-        loading={deleting}
-      />
+      <EditInsightModal insight={insightToEdit} open={editModalOpen} onOpenChange={setEditModalOpen} onSaved={fetchInsights} />
+      <DeleteConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} onConfirm={handleDelete} title="Delete Insight" itemName={insightToDelete?.title} loading={deleting} />
     </div>
   );
 }
