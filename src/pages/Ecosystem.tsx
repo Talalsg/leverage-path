@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,13 +8,16 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Users, Star, Clock, Trash2 } from 'lucide-react';
+import { Plus, Users, Star, Clock, Trash2, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { TouchpointLogger, getDecayStatus } from '@/components/TouchpointLogger';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
 import { LinkedInImport } from '@/components/LinkedInImport';
 import { RelationshipWarmthBadge } from '@/components/RelationshipWarmthBadge';
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
+import { SearchFilter } from '@/components/SearchFilter';
+import { EditContactModal } from '@/components/EditContactModal';
+import { AccessPathFinder } from '@/components/AccessPathFinder';
 
 type Tier = 'gatekeeper' | 'capital_allocator' | 'founder' | 'advisor' | 'connector';
 
@@ -28,6 +31,11 @@ interface Contact {
   is_key_ten: boolean;
   last_touchpoint: string | null;
   warmth_score: number | null;
+  email: string | null;
+  phone: string | null;
+  linkedin: string | null;
+  notes: string | null;
+  relationship_context: string | null;
 }
 
 const tiers: { key: Tier; label: string; color: string }[] = [
@@ -47,6 +55,14 @@ export default function Ecosystem() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formData, setFormData] = useState({ name: '', organization: '', role: '', tier: 'connector' as Tier });
   
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({});
+
+  // Edit state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [contactToEdit, setContactToEdit] = useState<Contact | null>(null);
+
   // Delete state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
@@ -60,6 +76,34 @@ export default function Ecosystem() {
   };
 
   useEffect(() => { fetchContacts(); }, [user]);
+
+  // Filter contacts based on search and filters
+  const filteredContacts = useMemo(() => {
+    return contacts.filter(contact => {
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesSearch = 
+          contact.name.toLowerCase().includes(query) ||
+          (contact.organization?.toLowerCase() || '').includes(query) ||
+          (contact.role?.toLowerCase() || '').includes(query);
+        if (!matchesSearch) return false;
+      }
+
+      // Tier filter
+      if (filterValues.tier && filterValues.tier !== 'all') {
+        if (contact.tier !== filterValues.tier) return false;
+      }
+
+      // Key 10 filter
+      if (filterValues.keyTen && filterValues.keyTen !== 'all') {
+        if (filterValues.keyTen === 'yes' && !contact.is_key_ten) return false;
+        if (filterValues.keyTen === 'no' && contact.is_key_ten) return false;
+      }
+
+      return true;
+    });
+  }, [contacts, searchQuery, filterValues]);
 
   const handleCreate = async () => {
     if (!user || !formData.name) return;
@@ -86,17 +130,18 @@ export default function Ecosystem() {
     fetchContacts();
   };
 
+  const openEditModal = (contact: Contact) => {
+    setContactToEdit(contact);
+    setEditModalOpen(true);
+  };
+
   const handleDelete = async () => {
     if (!contactToDelete) return;
     setDeleting(true);
     
     try {
-      // First delete related touchpoints
       await supabase.from('touchpoints').delete().eq('contact_id', contactToDelete.id);
-      
-      // Then delete the contact
       const { error } = await supabase.from('contacts').delete().eq('id', contactToDelete.id);
-      
       if (error) throw error;
       
       toast({ title: 'Contact deleted', description: `${contactToDelete.name} has been removed.` });
@@ -115,11 +160,21 @@ export default function Ecosystem() {
     setDeleteDialogOpen(true);
   };
 
-  const keyTen = contacts.filter(c => c.is_key_ten);
+  const clearAllFilters = () => {
+    setSearchQuery('');
+    setFilterValues({});
+  };
+
+  const keyTen = filteredContacts.filter(c => c.is_key_ten);
+
+  const filterOptions = [
+    { key: 'tier', label: 'Tier', options: tiers.map(t => ({ value: t.key, label: t.label })) },
+    { key: 'keyTen', label: 'Key 10', options: [{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }] },
+  ];
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold">Ecosystem Map</h1>
           <p className="text-muted-foreground">People are your leverage — cultivate high-signal relationships</p>
@@ -147,6 +202,17 @@ export default function Ecosystem() {
         </div>
       </div>
 
+      {/* Search and Filter */}
+      <SearchFilter
+        placeholder="Search contacts by name, organization, or role..."
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        filters={filterOptions}
+        filterValues={filterValues}
+        onFilterChange={(key, value) => setFilterValues(prev => ({ ...prev, [key]: value }))}
+        onClearAll={clearAllFilters}
+      />
+
       {keyTen.length > 0 && (
         <Card className="bg-card border-primary/30">
           <CardContent className="p-5">
@@ -158,8 +224,11 @@ export default function Ecosystem() {
         </Card>
       )}
 
+      {/* Access Path Finder */}
+      <AccessPathFinder />
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {contacts.map(contact => {
+        {filteredContacts.map(contact => {
           const tierInfo = tiers.find(t => t.key === contact.tier);
           const decay = getDecayStatus(contact.last_touchpoint);
           return (
@@ -179,7 +248,6 @@ export default function Ecosystem() {
                     <RelationshipWarmthBadge warmthScore={contact.warmth_score} />
                   </div>
                 </div>
-                {/* Decay Indicator */}
                 <div className={`mt-3 flex items-center gap-2 text-xs ${decay.color}`}>
                   <Clock className="h-3 w-3" />
                   <span>{decay.label}</span>
@@ -189,12 +257,10 @@ export default function Ecosystem() {
                     {contact.is_key_ten ? 'Remove from Key 10' : 'Add to Key 10'}
                   </Button>
                   <TouchpointLogger contactId={contact.id} contactName={contact.name} onLogged={fetchContacts} />
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => openDeleteDialog(contact)}
-                  >
+                  <Button size="sm" variant="ghost" onClick={() => openEditModal(contact)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => openDeleteDialog(contact)}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -202,19 +268,13 @@ export default function Ecosystem() {
             </Card>
           );
         })}
-        {contacts.length === 0 && !loading && (
-          <Card className="col-span-full bg-muted/30 border-dashed"><CardContent className="p-8 text-center text-muted-foreground">No contacts yet. Start building your network.</CardContent></Card>
+        {filteredContacts.length === 0 && !loading && (
+          <Card className="col-span-full bg-muted/30 border-dashed"><CardContent className="p-8 text-center text-muted-foreground">No contacts found. {searchQuery || Object.keys(filterValues).length > 0 ? 'Try adjusting your filters.' : 'Start building your network.'}</CardContent></Card>
         )}
       </div>
 
-      <DeleteConfirmDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        onConfirm={handleDelete}
-        title="Delete Contact"
-        itemName={contactToDelete?.name}
-        loading={deleting}
-      />
+      <EditContactModal contact={contactToEdit} open={editModalOpen} onOpenChange={setEditModalOpen} onSaved={fetchContacts} />
+      <DeleteConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} onConfirm={handleDelete} title="Delete Contact" itemName={contactToDelete?.name} loading={deleting} />
     </div>
   );
 }

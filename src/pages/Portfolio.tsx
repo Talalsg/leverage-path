@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,12 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ExitScenarioModal } from '@/components/ExitScenarioModal';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
 import { PortfolioHealthDashboard } from '@/components/PortfolioHealthDashboard';
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
+import { SearchFilter } from '@/components/SearchFilter';
+import { EditPortfolioModal } from '@/components/EditPortfolioModal';
 
 interface Position {
   id: string;
@@ -23,7 +25,24 @@ interface Position {
   equity_percent: number | null;
   status: string;
   is_top_position: boolean;
+  notes: string | null;
+  monthly_revenue: number | null;
+  burn_rate: number | null;
+  runway_months: number | null;
+  health_status: string | null;
 }
+
+const statusOptions = [
+  { value: 'active', label: 'Active' },
+  { value: 'exited', label: 'Exited' },
+  { value: 'written_off', label: 'Written Off' },
+];
+
+const healthOptions = [
+  { value: 'healthy', label: 'Healthy' },
+  { value: 'warning', label: 'Warning' },
+  { value: 'critical', label: 'Critical' },
+];
 
 export default function Portfolio() {
   const { user } = useAuth();
@@ -34,6 +53,14 @@ export default function Portfolio() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formData, setFormData] = useState({ company_name: '', sector: '', entry_valuation_usd: '', equity_percent: '' });
   
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({});
+
+  // Edit state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [positionToEdit, setPositionToEdit] = useState<Position | null>(null);
+
   // Delete state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [positionToDelete, setPositionToDelete] = useState<Position | null>(null);
@@ -47,6 +74,32 @@ export default function Portfolio() {
   };
 
   useEffect(() => { fetchPositions(); }, [user]);
+
+  // Filter positions based on search and filters
+  const filteredPositions = useMemo(() => {
+    return positions.filter(position => {
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesSearch = 
+          position.company_name.toLowerCase().includes(query) ||
+          (position.sector?.toLowerCase() || '').includes(query);
+        if (!matchesSearch) return false;
+      }
+
+      // Status filter
+      if (filterValues.status && filterValues.status !== 'all') {
+        if (position.status !== filterValues.status) return false;
+      }
+
+      // Health filter
+      if (filterValues.health && filterValues.health !== 'all') {
+        if (position.health_status !== filterValues.health) return false;
+      }
+
+      return true;
+    });
+  }, [positions, searchQuery, filterValues]);
 
   const handleCreate = async () => {
     if (!user || !formData.company_name) return;
@@ -69,13 +122,17 @@ export default function Portfolio() {
     }
   };
 
+  const openEditModal = (position: Position) => {
+    setPositionToEdit(position);
+    setEditModalOpen(true);
+  };
+
   const handleDelete = async () => {
     if (!positionToDelete) return;
     setDeleting(true);
     
     try {
       const { error } = await supabase.from('portfolio').delete().eq('id', positionToDelete.id);
-      
       if (error) throw error;
       
       toast({ title: 'Position deleted', description: `${positionToDelete.company_name} has been removed.` });
@@ -94,15 +151,25 @@ export default function Portfolio() {
     setDeleteDialogOpen(true);
   };
 
-  const totalPaperValue = positions.reduce((sum, p) => {
+  const clearAllFilters = () => {
+    setSearchQuery('');
+    setFilterValues({});
+  };
+
+  const totalPaperValue = filteredPositions.reduce((sum, p) => {
     if (p.current_valuation_usd && p.equity_percent) return sum + (p.current_valuation_usd * p.equity_percent / 100);
     if (p.entry_valuation_usd && p.equity_percent) return sum + (p.entry_valuation_usd * p.equity_percent / 100);
     return sum;
   }, 0);
 
+  const filterOptions = [
+    { key: 'status', label: 'Status', options: statusOptions },
+    { key: 'health', label: 'Health', options: healthOptions },
+  ];
+
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold">Portfolio</h1>
           <p className="text-muted-foreground">Track equity positions and projected returns</p>
@@ -122,11 +189,22 @@ export default function Portfolio() {
         </Dialog>
       </div>
 
+      {/* Search and Filter */}
+      <SearchFilter
+        placeholder="Search positions by company or sector..."
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        filters={filterOptions}
+        filterValues={filterValues}
+        onFilterChange={(key, value) => setFilterValues(prev => ({ ...prev, [key]: value }))}
+        onClearAll={clearAllFilters}
+      />
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-card border-border/50">
           <CardContent className="p-5">
             <p className="text-sm text-muted-foreground">Total Positions</p>
-            <p className="text-3xl font-bold mt-1">{positions.length}</p>
+            <p className="text-3xl font-bold mt-1">{filteredPositions.length}</p>
             <p className="text-xs text-muted-foreground/70">Target: 5-10 by EOY 2026</p>
           </CardContent>
         </Card>
@@ -139,16 +217,15 @@ export default function Portfolio() {
         <Card className="bg-card border-border/50">
           <CardContent className="p-5">
             <p className="text-sm text-muted-foreground">Active Positions</p>
-            <p className="text-3xl font-bold mt-1">{positions.filter(p => p.status === 'active').length}</p>
+            <p className="text-3xl font-bold mt-1">{filteredPositions.filter(p => p.status === 'active').length}</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Portfolio Health Dashboard */}
       <PortfolioHealthDashboard />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {positions.map(position => (
+        {filteredPositions.map(position => (
           <Card key={position.id} className="bg-card border-border/50 hover:border-primary/30 transition-colors">
             <CardContent className="p-5">
               <div className="flex items-start justify-between">
@@ -156,46 +233,48 @@ export default function Portfolio() {
                   <p className="font-semibold">{position.company_name}</p>
                   {position.sector && <p className="text-sm text-muted-foreground">{position.sector}</p>}
                 </div>
-                <div className="flex items-center gap-2">
-                  {position.is_top_position && <Badge className="bg-accent text-accent-foreground">Top Position</Badge>}
-                  <Button 
-                    size="icon" 
-                    variant="ghost" 
-                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => openDeleteDialog(position)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                <div className="flex items-center gap-1">
+                  {position.is_top_position && <Badge className="bg-accent text-accent-foreground">Top</Badge>}
+                  {position.health_status && (
+                    <Badge variant="outline" className={
+                      position.health_status === 'healthy' ? 'text-green-400 border-green-400/50' :
+                      position.health_status === 'warning' ? 'text-yellow-400 border-yellow-400/50' :
+                      'text-red-400 border-red-400/50'
+                    }>
+                      {position.health_status}
+                    </Badge>
+                  )}
                 </div>
               </div>
               <div className="mt-4 space-y-2">
                 {position.equity_percent && <p className="text-sm"><span className="text-muted-foreground">Equity:</span> {position.equity_percent}%</p>}
                 {position.entry_valuation_usd && <p className="text-sm"><span className="text-muted-foreground">Entry:</span> ${(position.entry_valuation_usd / 1000000).toFixed(1)}M</p>}
+                {position.runway_months && <p className="text-sm"><span className="text-muted-foreground">Runway:</span> {position.runway_months} months</p>}
               </div>
-              <div className="mt-4">
+              <div className="mt-4 flex gap-2">
                 <ExitScenarioModal 
                   companyName={position.company_name}
                   entryValuation={position.entry_valuation_usd}
                   currentValuation={position.current_valuation_usd}
                   equityPercent={position.equity_percent}
                 />
+                <Button size="sm" variant="ghost" onClick={() => openEditModal(position)}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => openDeleteDialog(position)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </CardContent>
           </Card>
         ))}
-        {positions.length === 0 && !loading && (
-          <Card className="col-span-full bg-muted/30 border-dashed"><CardContent className="p-8 text-center text-muted-foreground">No positions yet. Add your first equity position.</CardContent></Card>
+        {filteredPositions.length === 0 && !loading && (
+          <Card className="col-span-full bg-muted/30 border-dashed"><CardContent className="p-8 text-center text-muted-foreground">No positions found. {searchQuery || Object.keys(filterValues).length > 0 ? 'Try adjusting your filters.' : 'Add your first equity position.'}</CardContent></Card>
         )}
       </div>
 
-      <DeleteConfirmDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        onConfirm={handleDelete}
-        title="Delete Portfolio Position"
-        itemName={positionToDelete?.company_name}
-        loading={deleting}
-      />
+      <EditPortfolioModal position={positionToEdit} open={editModalOpen} onOpenChange={setEditModalOpen} onSaved={fetchPositions} />
+      <DeleteConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} onConfirm={handleDelete} title="Delete Portfolio Position" itemName={positionToDelete?.company_name} loading={deleting} />
     </div>
   );
 }
