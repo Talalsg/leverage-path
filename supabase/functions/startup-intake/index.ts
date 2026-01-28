@@ -134,8 +134,9 @@ ${body.anythingElse || 'N/A'}
         founder_linkedin: body.founderLinkedIn,
         deck_url: body.pitchDeckUrl || null,
         notes: notesContent,
-        vision_2030_alignment: body.saudiOperating?.includes('yes') ? 7 : 
-                               body.saudiOperating === 'open' ? 5 : 3,
+        // vision_2030_alignment expects 1-5 range
+        vision_2030_alignment: body.saudiOperating?.includes('yes') ? 5 : 
+                               body.saudiOperating === 'open' ? 3 : 1,
       })
       .select()
       .single();
