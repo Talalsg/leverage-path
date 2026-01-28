@@ -12,6 +12,7 @@ import { Plus, Users, Star, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { TouchpointLogger, getDecayStatus } from '@/components/TouchpointLogger';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
+import { LinkedInImport } from '@/components/LinkedInImport';
 
 type Tier = 'gatekeeper' | 'capital_allocator' | 'founder' | 'advisor' | 'connector';
 
@@ -86,24 +87,27 @@ export default function Ecosystem() {
           <h1 className="text-3xl font-bold">Ecosystem Map</h1>
           <p className="text-muted-foreground">People are your leverage — cultivate high-signal relationships</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Add Contact</Button></DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Add Contact</DialogTitle></DialogHeader>
-            <div className="space-y-4">
-              <div><Label>Name *</Label><Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
-              <div><Label>Organization</Label><Input value={formData.organization} onChange={e => setFormData({...formData, organization: e.target.value})} /></div>
-              <div><Label>Role</Label><Input value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} /></div>
-              <div><Label>Tier</Label>
-                <Select value={formData.tier} onValueChange={v => setFormData({...formData, tier: v as Tier})}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{tiers.map(t => <SelectItem key={t.key} value={t.key}>{t.label}</SelectItem>)}</SelectContent>
-                </Select>
+        <div className="flex gap-2">
+          <LinkedInImport onImportComplete={fetchContacts} />
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Add Contact</Button></DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Add Contact</DialogTitle></DialogHeader>
+              <div className="space-y-4">
+                <div><Label>Name *</Label><Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
+                <div><Label>Organization</Label><Input value={formData.organization} onChange={e => setFormData({...formData, organization: e.target.value})} /></div>
+                <div><Label>Role</Label><Input value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} /></div>
+                <div><Label>Tier</Label>
+                  <Select value={formData.tier} onValueChange={v => setFormData({...formData, tier: v as Tier})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{tiers.map(t => <SelectItem key={t.key} value={t.key}>{t.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <Button onClick={handleCreate} className="w-full">Add Contact</Button>
               </div>
-              <Button onClick={handleCreate} className="w-full">Add Contact</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {keyTen.length > 0 && (
