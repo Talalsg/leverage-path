@@ -7,11 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ExitScenarioModal } from '@/components/ExitScenarioModal';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
 import { PortfolioHealthDashboard } from '@/components/PortfolioHealthDashboard';
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
 
 interface Position {
   id: string;
@@ -32,6 +33,11 @@ export default function Portfolio() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formData, setFormData] = useState({ company_name: '', sector: '', entry_valuation_usd: '', equity_percent: '' });
+  
+  // Delete state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [positionToDelete, setPositionToDelete] = useState<Position | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchPositions = async () => {
     if (!user) return;
@@ -61,6 +67,31 @@ export default function Portfolio() {
       setFormData({ company_name: '', sector: '', entry_valuation_usd: '', equity_percent: '' }); 
       fetchPositions(); 
     }
+  };
+
+  const handleDelete = async () => {
+    if (!positionToDelete) return;
+    setDeleting(true);
+    
+    try {
+      const { error } = await supabase.from('portfolio').delete().eq('id', positionToDelete.id);
+      
+      if (error) throw error;
+      
+      toast({ title: 'Position deleted', description: `${positionToDelete.company_name} has been removed.` });
+      setDeleteDialogOpen(false);
+      setPositionToDelete(null);
+      fetchPositions();
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const openDeleteDialog = (position: Position) => {
+    setPositionToDelete(position);
+    setDeleteDialogOpen(true);
   };
 
   const totalPaperValue = positions.reduce((sum, p) => {
@@ -125,7 +156,17 @@ export default function Portfolio() {
                   <p className="font-semibold">{position.company_name}</p>
                   {position.sector && <p className="text-sm text-muted-foreground">{position.sector}</p>}
                 </div>
-                {position.is_top_position && <Badge className="bg-accent text-accent-foreground">Top Position</Badge>}
+                <div className="flex items-center gap-2">
+                  {position.is_top_position && <Badge className="bg-accent text-accent-foreground">Top Position</Badge>}
+                  <Button 
+                    size="icon" 
+                    variant="ghost" 
+                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => openDeleteDialog(position)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               <div className="mt-4 space-y-2">
                 {position.equity_percent && <p className="text-sm"><span className="text-muted-foreground">Equity:</span> {position.equity_percent}%</p>}
@@ -146,6 +187,15 @@ export default function Portfolio() {
           <Card className="col-span-full bg-muted/30 border-dashed"><CardContent className="p-8 text-center text-muted-foreground">No positions yet. Add your first equity position.</CardContent></Card>
         )}
       </div>
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleDelete}
+        title="Delete Portfolio Position"
+        itemName={positionToDelete?.company_name}
+        loading={deleting}
+      />
     </div>
   );
 }

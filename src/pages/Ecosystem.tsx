@@ -8,12 +8,13 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Users, Star, Clock } from 'lucide-react';
+import { Plus, Users, Star, Clock, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { TouchpointLogger, getDecayStatus } from '@/components/TouchpointLogger';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
 import { LinkedInImport } from '@/components/LinkedInImport';
 import { RelationshipWarmthBadge } from '@/components/RelationshipWarmthBadge';
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
 
 type Tier = 'gatekeeper' | 'capital_allocator' | 'founder' | 'advisor' | 'connector';
 
@@ -45,6 +46,11 @@ export default function Ecosystem() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formData, setFormData] = useState({ name: '', organization: '', role: '', tier: 'connector' as Tier });
+  
+  // Delete state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchContacts = async () => {
     if (!user) return;
@@ -78,6 +84,35 @@ export default function Ecosystem() {
   const toggleKeyTen = async (id: string, current: boolean) => {
     await supabase.from('contacts').update({ is_key_ten: !current }).eq('id', id);
     fetchContacts();
+  };
+
+  const handleDelete = async () => {
+    if (!contactToDelete) return;
+    setDeleting(true);
+    
+    try {
+      // First delete related touchpoints
+      await supabase.from('touchpoints').delete().eq('contact_id', contactToDelete.id);
+      
+      // Then delete the contact
+      const { error } = await supabase.from('contacts').delete().eq('id', contactToDelete.id);
+      
+      if (error) throw error;
+      
+      toast({ title: 'Contact deleted', description: `${contactToDelete.name} has been removed.` });
+      setDeleteDialogOpen(false);
+      setContactToDelete(null);
+      fetchContacts();
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const openDeleteDialog = (contact: Contact) => {
+    setContactToDelete(contact);
+    setDeleteDialogOpen(true);
   };
 
   const keyTen = contacts.filter(c => c.is_key_ten);
@@ -154,6 +189,14 @@ export default function Ecosystem() {
                     {contact.is_key_ten ? 'Remove from Key 10' : 'Add to Key 10'}
                   </Button>
                   <TouchpointLogger contactId={contact.id} contactName={contact.name} onLogged={fetchContacts} />
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => openDeleteDialog(contact)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -163,6 +206,15 @@ export default function Ecosystem() {
           <Card className="col-span-full bg-muted/30 border-dashed"><CardContent className="p-8 text-center text-muted-foreground">No contacts yet. Start building your network.</CardContent></Card>
         )}
       </div>
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleDelete}
+        title="Delete Contact"
+        itemName={contactToDelete?.name}
+        loading={deleting}
+      />
     </div>
   );
 }
