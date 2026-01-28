@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { action, deal, historicalDeals, userPatterns, contacts } = await req.json();
+    const { action, deal, historicalDeals, userPatterns, contacts, targetName, userContacts } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
@@ -201,6 +201,125 @@ Return a JSON array of categories in the same order:
 ["founder", "capital_allocator", "connector", ...]
 
 Only return the JSON array, nothing else.`;
+        break;
+
+      case "calculate-warmth":
+        systemPrompt = `You are an expert at analyzing relationship strength based on interaction data. 
+You calculate relationship warmth scores on a scale of 1-10 based on:
+- Recency of last interaction (40% weight)
+- Frequency of interactions (30% weight)  
+- Quality/depth of interactions (30% weight)
+
+Higher quality interactions: meetings, calls, introductions
+Medium quality: emails, messages
+Lower quality: social media likes, comments`;
+
+        userPrompt = `Analyze this contact's relationship warmth:
+
+Contact: ${deal?.name || 'Unknown'}
+Last Touchpoint: ${deal?.last_touchpoint || 'Never'}
+Total Touchpoints: ${deal?.touchpoint_count || 0}
+Meeting Count: ${deal?.meeting_count || 0}
+Tier: ${deal?.tier || 'Unknown'}
+
+Calculate and return JSON:
+{
+  "warmth_score": 1-10,
+  "recency_score": 1-10,
+  "frequency_score": 1-10,
+  "quality_score": 1-10,
+  "reasoning": "brief explanation",
+  "recommendation": "action to maintain or improve relationship"
+}`;
+        break;
+
+      case "find-access-path":
+        systemPrompt = `You are an expert at mapping relationship networks to find the best path to reach a target person.
+You analyze existing contacts to find direct or indirect connections to a target founder or executive.
+Prioritize:
+1. Direct connections (you know them directly)
+2. One-hop connections (a contact knows them)
+3. Industry/sector connections (contacts in same field)
+4. Warm introductions over cold outreach`;
+
+        userPrompt = `Find the best access path to reach: ${targetName}
+
+Your network (${userContacts?.length || 0} contacts):
+${userContacts?.slice(0, 50).map((c: any) => `- ${c.name} (${c.tier}, ${c.organization || 'Unknown org'}) - Warmth: ${c.warmth_score || 5}/10`).join('\n') || 'No contacts available'}
+
+Analyze and return JSON:
+{
+  "target": "${targetName}",
+  "access_possible": true/false,
+  "paths": [
+    {
+      "type": "direct" | "one_hop" | "industry" | "cold",
+      "via_contact": "contact name if applicable",
+      "confidence": 1-10,
+      "strategy": "how to approach"
+    }
+  ],
+  "best_approach": "recommended strategy",
+  "contacts_to_leverage": ["list of contact names to involve"]
+}`;
+        break;
+
+      case "check-resurface":
+        systemPrompt = `You are an expert at comparing startup pitches over time to identify what has changed.
+When a previously passed deal returns, you analyze:
+1. What were the original objections
+2. What has changed since then
+3. Whether the changes address the original concerns
+4. If it's worth reconsidering`;
+
+        userPrompt = `A company you previously passed on is back:
+
+Company: ${deal?.company_name || 'Unknown'}
+Original Pass Date: ${deal?.pass_date || 'Unknown'}
+Original Pass Reason: ${deal?.pass_reason || 'Not recorded'}
+Original Objections: ${JSON.stringify(deal?.objections_at_pass || [])}
+Original AI Score: ${deal?.original_ai_score || 'N/A'}
+
+New Information:
+${deal?.new_notes || 'No new information provided'}
+New Valuation: ${deal?.new_valuation ? `$${(deal.new_valuation / 1000000).toFixed(1)}M` : 'Unknown'}
+
+Analyze and return JSON:
+{
+  "worth_reconsidering": true/false,
+  "original_concerns_addressed": ["list of concerns that have been addressed"],
+  "remaining_concerns": ["list of concerns still valid"],
+  "new_red_flags": ["any new concerns"],
+  "key_question_to_ask": "the most important question to ask the founder",
+  "recommendation": "RECONSIDER" | "STILL PASS" | "NEED MORE INFO",
+  "reasoning": "2-3 sentence summary"
+}`;
+        break;
+
+      case "analyze-velocity":
+        systemPrompt = `You are an expert at analyzing deal pipeline velocity and identifying anomalies.
+You look at how long deals spend in each stage and flag:
+- Deals moving unusually fast (may need more diligence)
+- Deals stuck too long (decision fatigue or lack of conviction)
+- Patterns in stage transitions`;
+
+        userPrompt = `Analyze deal velocity for this pipeline:
+
+Deals with stage history:
+${historicalDeals?.slice(0, 20).map((d: any) => `- ${d.company_name}: ${d.stage} (history: ${JSON.stringify(d.stage_history || [])})`).join('\n') || 'No deals with history'}
+
+Calculate and return JSON:
+{
+  "average_days_per_stage": {
+    "review": number,
+    "evaluating": number,
+    "term_sheet": number
+  },
+  "fast_movers": ["companies moving faster than average"],
+  "stuck_deals": ["companies stuck longer than average"],
+  "velocity_insights": ["key observations about pipeline movement"],
+  "recommended_actions": ["what to do about stuck or fast-moving deals"]
+}`;
         break;
 
       default:

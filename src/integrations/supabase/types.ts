@@ -90,6 +90,7 @@ export type Database = {
       }
       contacts: {
         Row: {
+          access_paths: Json | null
           created_at: string
           email: string | null
           id: string
@@ -100,13 +101,16 @@ export type Database = {
           notes: string | null
           organization: string | null
           phone: string | null
+          relationship_context: string | null
           role: string | null
           tier: string
           trust_level: number | null
           updated_at: string
           user_id: string
+          warmth_score: number | null
         }
         Insert: {
+          access_paths?: Json | null
           created_at?: string
           email?: string | null
           id?: string
@@ -117,13 +121,16 @@ export type Database = {
           notes?: string | null
           organization?: string | null
           phone?: string | null
+          relationship_context?: string | null
           role?: string | null
           tier?: string
           trust_level?: number | null
           updated_at?: string
           user_id: string
+          warmth_score?: number | null
         }
         Update: {
+          access_paths?: Json | null
           created_at?: string
           email?: string | null
           id?: string
@@ -134,11 +141,13 @@ export type Database = {
           notes?: string | null
           organization?: string | null
           phone?: string | null
+          relationship_context?: string | null
           role?: string | null
           tier?: string
           trust_level?: number | null
           updated_at?: string
           user_id?: string
+          warmth_score?: number | null
         }
         Relationships: []
       }
@@ -197,11 +206,15 @@ export type Database = {
           id: string
           iteration_speed: number | null
           notes: string | null
+          objections_at_pass: Json | null
           outcome: string | null
           outcome_notes: string | null
           overall_score: number | null
+          pass_date: string | null
+          pass_reason: string | null
           sector: string | null
           stage: string | null
+          stage_history: Json | null
           updated_at: string
           user_id: string
           valuation_usd: number | null
@@ -228,11 +241,15 @@ export type Database = {
           id?: string
           iteration_speed?: number | null
           notes?: string | null
+          objections_at_pass?: Json | null
           outcome?: string | null
           outcome_notes?: string | null
           overall_score?: number | null
+          pass_date?: string | null
+          pass_reason?: string | null
           sector?: string | null
           stage?: string | null
+          stage_history?: Json | null
           updated_at?: string
           user_id: string
           valuation_usd?: number | null
@@ -259,17 +276,71 @@ export type Database = {
           id?: string
           iteration_speed?: number | null
           notes?: string | null
+          objections_at_pass?: Json | null
           outcome?: string | null
           outcome_notes?: string | null
           overall_score?: number | null
+          pass_date?: string | null
+          pass_reason?: string | null
           sector?: string | null
           stage?: string | null
+          stage_history?: Json | null
           updated_at?: string
           user_id?: string
           valuation_usd?: number | null
           vision_2030_alignment?: number | null
         }
         Relationships: []
+      }
+      decision_journal: {
+        Row: {
+          confidence_level: number | null
+          created_at: string
+          deal_id: string | null
+          decision: string
+          follow_up_date: string | null
+          follow_up_outcome: string | null
+          id: string
+          market_conditions: string | null
+          reasoning: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          confidence_level?: number | null
+          created_at?: string
+          deal_id?: string | null
+          decision: string
+          follow_up_date?: string | null
+          follow_up_outcome?: string | null
+          id?: string
+          market_conditions?: string | null
+          reasoning?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          confidence_level?: number | null
+          created_at?: string
+          deal_id?: string | null
+          decision?: string
+          follow_up_date?: string | null
+          follow_up_outcome?: string | null
+          id?: string
+          market_conditions?: string | null
+          reasoning?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_journal_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       goals: {
         Row: {
@@ -366,6 +437,7 @@ export type Database = {
       }
       portfolio: {
         Row: {
+          burn_rate: number | null
           company_name: string
           created_at: string
           current_valuation_usd: number | null
@@ -375,16 +447,21 @@ export type Database = {
           equity_percent: number | null
           exit_date: string | null
           exit_valuation_usd: number | null
+          health_status: string | null
           id: string
           is_top_position: boolean | null
+          last_metrics_update: string | null
+          monthly_revenue: number | null
           notes: string | null
           return_multiple: number | null
+          runway_months: number | null
           sector: string | null
           status: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          burn_rate?: number | null
           company_name: string
           created_at?: string
           current_valuation_usd?: number | null
@@ -394,16 +471,21 @@ export type Database = {
           equity_percent?: number | null
           exit_date?: string | null
           exit_valuation_usd?: number | null
+          health_status?: string | null
           id?: string
           is_top_position?: boolean | null
+          last_metrics_update?: string | null
+          monthly_revenue?: number | null
           notes?: string | null
           return_multiple?: number | null
+          runway_months?: number | null
           sector?: string | null
           status?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          burn_rate?: number | null
           company_name?: string
           created_at?: string
           current_valuation_usd?: number | null
@@ -413,10 +495,14 @@ export type Database = {
           equity_percent?: number | null
           exit_date?: string | null
           exit_valuation_usd?: number | null
+          health_status?: string | null
           id?: string
           is_top_position?: boolean | null
+          last_metrics_update?: string | null
+          monthly_revenue?: number | null
           notes?: string | null
           return_multiple?: number | null
+          runway_months?: number | null
           sector?: string | null
           status?: string | null
           updated_at?: string
@@ -544,7 +630,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      calculate_contact_warmth: {
+        Args: { contact_uuid: string }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never

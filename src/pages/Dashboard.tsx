@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { DashboardCharts } from '@/components/DashboardCharts';
 import { WeeklyReview } from '@/components/WeeklyReview';
 import { GoalTracker } from '@/components/GoalTracker';
+import { CriticalQuestionsDashboard } from '@/components/CriticalQuestionsDashboard';
 import { 
   Target, 
   Briefcase, 
@@ -302,6 +303,9 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Critical Questions Dashboard */}
+      <CriticalQuestionsDashboard />
 
       {/* Goals Tracker */}
       <GoalTracker />
