@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { MessageSquare, Phone, Mail, Handshake, Calendar } from 'lucide-react';
 
@@ -70,6 +70,7 @@ export function TouchpointLogger({ contactId, contactName, onLogged }: Touchpoin
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Log Touchpoint with {contactName}</DialogTitle>
+          <DialogDescription>Record an interaction to track relationship warmth.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div>
