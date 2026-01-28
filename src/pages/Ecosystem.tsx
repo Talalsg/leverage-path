@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { TouchpointLogger, getDecayStatus } from '@/components/TouchpointLogger';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
 import { LinkedInImport } from '@/components/LinkedInImport';
+import { RelationshipWarmthBadge } from '@/components/RelationshipWarmthBadge';
 
 type Tier = 'gatekeeper' | 'capital_allocator' | 'founder' | 'advisor' | 'connector';
 
@@ -25,6 +26,7 @@ interface Contact {
   trust_level: number | null;
   is_key_ten: boolean;
   last_touchpoint: string | null;
+  warmth_score: number | null;
 }
 
 const tiers: { key: Tier; label: string; color: string }[] = [
@@ -137,7 +139,10 @@ export default function Ecosystem() {
                     {contact.organization && <p className="text-sm text-muted-foreground">{contact.organization}</p>}
                     {contact.role && <p className="text-xs text-muted-foreground/70">{contact.role}</p>}
                   </div>
-                  <Badge className={tierInfo?.color}>{tierInfo?.label}</Badge>
+                  <div className="flex flex-col items-end gap-1">
+                    <Badge className={tierInfo?.color}>{tierInfo?.label}</Badge>
+                    <RelationshipWarmthBadge warmthScore={contact.warmth_score} />
+                  </div>
                 </div>
                 {/* Decay Indicator */}
                 <div className={`mt-3 flex items-center gap-2 text-xs ${decay.color}`}>

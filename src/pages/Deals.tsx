@@ -11,13 +11,17 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Target, Brain, Sparkles, GitCompare } from 'lucide-react';
+import { Plus, Target, Brain, Sparkles, GitCompare, BookOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AIAdvisor } from '@/components/AIAdvisor';
 import { DealEvaluatorModal } from '@/components/DealEvaluatorModal';
 import { DealComparison } from '@/components/DealComparison';
 import { PatternEditor } from '@/components/PatternEditor';
 import { CSVImport } from '@/components/CSVImport';
+import { PastPassAlert } from '@/components/PastPassAlert';
+import { DecisionJournalModal } from '@/components/DecisionJournalModal';
+import { DealVelocityChart } from '@/components/DealVelocityChart';
+import { useActivityLogger } from '@/hooks/useActivityLogger';
 type DealStage = 'review' | 'evaluating' | 'passed' | 'term_sheet' | 'closed' | 'rejected';
 type DealOutcome = 'win' | 'miss' | 'regret' | 'noise' | 'pending';
 interface Deal {
@@ -101,6 +105,7 @@ export default function Deals() {
   const {
     toast
   } = useToast();
+  const { logActivity } = useActivityLogger();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -152,6 +157,11 @@ export default function Deals() {
     } else {
       toast({
         title: 'Deal added'
+      });
+      logActivity({
+        type: 'deal_created',
+        title: `Created deal: ${formData.company_name}`,
+        entityType: 'deal',
       });
       setDialogOpen(false);
       setFormData({
@@ -240,6 +250,12 @@ export default function Deals() {
                   ...formData,
                   notes: e.target.value
                 })} placeholder="Initial thoughts..." /></div>
+                
+                {/* Past Pass Alert */}
+                {formData.company_name.length > 2 && (
+                  <PastPassAlert companyName={formData.company_name} />
+                )}
+                
                 <Button onClick={handleCreate} className="w-full">Add Deal</Button>
               </div>
             </DialogContent>
@@ -292,9 +308,12 @@ export default function Deals() {
                               </Select>
                             </div>
 
-                            <Button variant="outline" size="sm" className="w-full mt-2 h-7 text-xs" onClick={() => openEvaluator(deal)}>
-                              <Brain className="h-3 w-3 mr-1" />AI Evaluate
-                            </Button>
+                            <div className="flex gap-1 mt-2">
+                              <Button variant="outline" size="sm" className="flex-1 h-7 text-xs" onClick={() => openEvaluator(deal)}>
+                                <Brain className="h-3 w-3 mr-1" />Evaluate
+                              </Button>
+                              <DecisionJournalModal dealId={deal.id} dealName={deal.company_name} onSaved={fetchDeals} />
+                            </div>
                           </CardContent>
                         </Card>)}
                     </div>
@@ -302,8 +321,9 @@ export default function Deals() {
               </div>
             </div>
 
-            {/* AI Advisor */}
-            <div>
+            {/* AI Advisor & Velocity */}
+            <div className="space-y-4">
+              <DealVelocityChart deals={deals} />
               <AIAdvisor />
             </div>
           </div>

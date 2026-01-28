@@ -11,6 +11,7 @@ import { Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ExitScenarioModal } from '@/components/ExitScenarioModal';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
+import { PortfolioHealthDashboard } from '@/components/PortfolioHealthDashboard';
 
 interface Position {
   id: string;
@@ -111,6 +112,9 @@ export default function Portfolio() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Portfolio Health Dashboard */}
+      <PortfolioHealthDashboard />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {positions.map(position => (
