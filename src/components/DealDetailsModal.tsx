@@ -506,6 +506,43 @@ export function DealDetailsModal({ deal, open, onOpenChange, onSaved }: DealDeta
                     )}
                   </div>
 
+                  {/* Pitch Deck - Prominent Card */}
+                  {(deckUrl || deal.deck_url) && (
+                    <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/40">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-primary/20 rounded-lg">
+                              <FileText className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-medium text-foreground">Pitch Deck</h4>
+                              <p className="text-xs text-muted-foreground">Submitted by founder</p>
+                            </div>
+                          </div>
+                          {loadingDeck ? (
+                            <Button variant="outline" size="sm" disabled>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Loading...
+                            </Button>
+                          ) : deckUrl ? (
+                            <Button variant="default" size="sm" asChild>
+                              <a href={deckUrl} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="h-4 w-4 mr-2" />
+                                Open Pitch Deck
+                              </a>
+                            </Button>
+                          ) : (
+                            <Button variant="outline" size="sm" disabled>
+                              <FileText className="h-4 w-4 mr-2" />
+                              Unavailable
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
                   {/* One-Liner & Description */}
                   {intakeData.oneSentence && (
                     <Card className="bg-primary/5 border-primary/30">
