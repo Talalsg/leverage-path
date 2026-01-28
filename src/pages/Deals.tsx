@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Target, Brain, Sparkles, GitCompare, BookOpen, BarChart3 } from 'lucide-react';
+import { Plus, Target, Brain, Sparkles, GitCompare, BookOpen, BarChart3, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AIAdvisor } from '@/components/AIAdvisor';
 import { DealEvaluatorModal } from '@/components/DealEvaluatorModal';
@@ -24,6 +24,7 @@ import { DealVelocityChart } from '@/components/DealVelocityChart';
 import { DealFlowMetrics } from '@/components/DealFlowMetrics';
 import { CreatePortfolioFromDealModal } from '@/components/CreatePortfolioFromDealModal';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
 
 type DealStage = 'review' | 'evaluating' | 'passed' | 'term_sheet' | 'closed' | 'rejected';
 type DealOutcome = 'win' | 'miss' | 'regret' | 'noise' | 'pending';
@@ -131,6 +132,11 @@ export default function Deals() {
   const [portfolioConversionOpen, setPortfolioConversionOpen] = useState(false);
   const [dealToConvert, setDealToConvert] = useState<Deal | null>(null);
 
+  // Delete state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [dealToDelete, setDealToDelete] = useState<Deal | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   const fetchDeals = async () => {
     if (!user) return;
     const {
@@ -221,6 +227,37 @@ export default function Deals() {
   };
   const getSelectedDealsArray = () => {
     return deals.filter(d => selectedDeals.has(d.id));
+  };
+
+  const handleDelete = async () => {
+    if (!dealToDelete) return;
+    setDeleting(true);
+    
+    try {
+      // Delete related records first
+      await supabase.from('ai_evaluations').delete().eq('deal_id', dealToDelete.id);
+      await supabase.from('decision_journal').delete().eq('deal_id', dealToDelete.id);
+      
+      // Delete the deal
+      const { error } = await supabase.from('deals').delete().eq('id', dealToDelete.id);
+      
+      if (error) throw error;
+      
+      toast({ title: 'Deal deleted', description: `${dealToDelete.company_name} has been removed.` });
+      setDeleteDialogOpen(false);
+      setDealToDelete(null);
+      selectedDeals.delete(dealToDelete.id);
+      fetchDeals();
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const openDeleteDialog = (deal: Deal) => {
+    setDealToDelete(deal);
+    setDeleteDialogOpen(true);
   };
   const dealsByStage = stages.map(s => ({
     ...s,
@@ -335,6 +372,14 @@ export default function Deals() {
                                 <Brain className="h-3 w-3 mr-1" />Evaluate
                               </Button>
                               <DecisionJournalModal dealId={deal.id} dealName={deal.company_name} onSaved={fetchDeals} />
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => openDeleteDialog(deal)}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
                             </div>
                           </CardContent>
                         </Card>)}
@@ -372,6 +417,15 @@ export default function Deals() {
         open={portfolioConversionOpen} 
         onOpenChange={setPortfolioConversionOpen} 
         onComplete={fetchDeals} 
+      />
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleDelete}
+        title="Delete Deal"
+        itemName={dealToDelete?.company_name}
+        loading={deleting}
       />
     </div>;
 }

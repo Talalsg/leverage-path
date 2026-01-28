@@ -9,9 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Lightbulb, Sparkles, Loader2 } from 'lucide-react';
+import { Plus, Lightbulb, Sparkles, Loader2, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
 
 type Status = 'idea' | 'draft' | 'published';
 
@@ -34,6 +35,11 @@ export default function Insights() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formData, setFormData] = useState({ title: '', content: '' });
   const [generatingAI, setGeneratingAI] = useState(false);
+  
+  // Delete state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [insightToDelete, setInsightToDelete] = useState<Insight | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchInsights = async () => {
     if (!user) return;
@@ -90,6 +96,31 @@ export default function Insights() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!insightToDelete) return;
+    setDeleting(true);
+    
+    try {
+      const { error } = await supabase.from('insights').delete().eq('id', insightToDelete.id);
+      
+      if (error) throw error;
+      
+      toast({ title: 'Insight deleted', description: `"${insightToDelete.title}" has been removed.` });
+      setDeleteDialogOpen(false);
+      setInsightToDelete(null);
+      fetchInsights();
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const openDeleteDialog = (insight: Insight) => {
+    setInsightToDelete(insight);
+    setDeleteDialogOpen(true);
+  };
+
   const published = insights.filter(i => i.status === 'published').length;
 
   return (
@@ -127,9 +158,19 @@ export default function Insights() {
         {insights.map(insight => (
           <Card key={insight.id} className="bg-card border-border/50">
             <CardContent className="p-5">
-              <Badge variant={insight.status === 'published' ? 'default' : insight.status === 'draft' ? 'secondary' : 'outline'} className="mb-2">
-                {insight.status}
-              </Badge>
+              <div className="flex items-start justify-between">
+                <Badge variant={insight.status === 'published' ? 'default' : insight.status === 'draft' ? 'secondary' : 'outline'} className="mb-2">
+                  {insight.status}
+                </Badge>
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => openDeleteDialog(insight)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
               <p className="font-semibold">{insight.title}</p>
               {insight.content && <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{insight.content}</p>}
               <div className="mt-4">
@@ -149,6 +190,15 @@ export default function Insights() {
           <Card className="col-span-full bg-muted/30 border-dashed"><CardContent className="p-8 text-center text-muted-foreground">No insights yet. Capture your first idea.</CardContent></Card>
         )}
       </div>
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleDelete}
+        title="Delete Insight"
+        itemName={insightToDelete?.title}
+        loading={deleting}
+      />
     </div>
   );
 }
