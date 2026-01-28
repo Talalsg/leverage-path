@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -186,19 +187,29 @@ export default function Deals() {
     const deal = deals.find(d => d.id === id);
     const previousStage = deal?.stage;
     
-    await supabase.from('deals').update({ stage }).eq('id', id);
-    
-    if (stage === 'closed' && previousStage !== 'closed' && deal) {
-      setDealToConvert(deal);
-      setPortfolioConversionOpen(true);
+    try {
+      const { error } = await supabase.from('deals').update({ stage }).eq('id', id);
+      if (error) throw error;
+      
+      if (stage === 'closed' && previousStage !== 'closed' && deal) {
+        setDealToConvert(deal);
+        setPortfolioConversionOpen(true);
+      }
+      
+      fetchDeals();
+    } catch (error: any) {
+      toast({ title: 'Error updating stage', description: error.message, variant: 'destructive' });
     }
-    
-    fetchDeals();
   };
 
   const updateOutcome = async (id: string, outcome: DealOutcome) => {
-    await supabase.from('deals').update({ outcome }).eq('id', id);
-    fetchDeals();
+    try {
+      const { error } = await supabase.from('deals').update({ outcome }).eq('id', id);
+      if (error) throw error;
+      fetchDeals();
+    } catch (error: any) {
+      toast({ title: 'Error updating outcome', description: error.message, variant: 'destructive' });
+    }
   };
 
   const openEvaluator = (deal: Deal) => {
@@ -235,7 +246,11 @@ export default function Deals() {
       toast({ title: 'Deal deleted', description: `${dealToDelete.company_name} has been removed.` });
       setDeleteDialogOpen(false);
       setDealToDelete(null);
-      selectedDeals.delete(dealToDelete.id);
+      setSelectedDeals(prev => {
+        const next = new Set(prev);
+        next.delete(dealToDelete.id);
+        return next;
+      });
       fetchDeals();
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -287,7 +302,10 @@ export default function Deals() {
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Add Deal</Button></DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Add New Deal</DialogTitle></DialogHeader>
+              <DialogHeader>
+                <DialogTitle>Add New Deal</DialogTitle>
+                <DialogDescription>Enter the details of the new deal to add to your pipeline.</DialogDescription>
+              </DialogHeader>
               <div className="space-y-4">
                 <div><Label>Company Name *</Label><Input value={formData.company_name} onChange={e => setFormData({ ...formData, company_name: e.target.value })} /></div>
                 <div><Label>Sector</Label><Input value={formData.sector} onChange={e => setFormData({ ...formData, sector: e.target.value })} placeholder="e.g., Fintech, Health" /></div>
@@ -324,7 +342,31 @@ export default function Deals() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3 overflow-x-auto">
-                {dealsByStage.map(stage => (
+                {loading ? (
+                  // Loading skeletons
+                  stages.map(stage => (
+                    <div key={stage.key} className="min-w-[180px]">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Skeleton className="h-3 w-3 rounded-full" />
+                        <Skeleton className="h-4 w-16" />
+                        <Skeleton className="h-5 w-6 ml-auto" />
+                      </div>
+                      <div className="space-y-2">
+                        {[1, 2].map(i => (
+                          <Card key={i} className="bg-card border-border/50">
+                            <CardContent className="p-3 space-y-2">
+                              <Skeleton className="h-4 w-full" />
+                              <Skeleton className="h-3 w-2/3" />
+                              <Skeleton className="h-7 w-full" />
+                              <Skeleton className="h-7 w-full" />
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  dealsByStage.map(stage => (
                   <div key={stage.key} className="min-w-[180px]">
                     <div className="flex items-center gap-2 mb-3">
                       <div className={`h-3 w-3 rounded-full ${stage.color}`} />
@@ -372,10 +414,11 @@ export default function Deals() {
                             </div>
                           </CardContent>
                         </Card>
-                      ))}
+                    ))}
                     </div>
                   </div>
-                ))}
+                ))
+                )}
               </div>
             </div>
 
