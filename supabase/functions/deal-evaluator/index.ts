@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { action, deal, historicalDeals, userPatterns } = await req.json();
+    const { action, deal, historicalDeals, userPatterns, contacts } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
@@ -180,6 +180,29 @@ Writing style:
 Write the content ready to publish. Include a compelling hook in the first line.`;
         break;
 
+      case "categorize-contacts":
+        systemPrompt = `You are an expert at categorizing professional contacts for a venture capital investor. 
+        
+Categories:
+- founder: Startup founders, CEOs, co-founders of companies
+- capital_allocator: VCs, angel investors, fund managers, family office members, LPs
+- advisor: Board members, advisors, mentors, consultants
+- gatekeeper: Corporate executives, directors, managers who control access to deals or resources
+- connector: Everyone else - professionals, friends, industry contacts
+
+Analyze each contact's company and role to assign the most appropriate category.`;
+
+        userPrompt = `Categorize these ${contacts?.length || 0} contacts into the categories above.
+
+Contacts:
+${contacts?.map((c: any, i: number) => `${i + 1}. ${c.name} - ${c.role || 'Unknown role'} at ${c.company || 'Unknown company'}`).join('\n')}
+
+Return a JSON array of categories in the same order:
+["founder", "capital_allocator", "connector", ...]
+
+Only return the JSON array, nothing else.`;
+        break;
+
       default:
         throw new Error("Unknown action");
     }
@@ -232,6 +255,23 @@ Write the content ready to publish. Include a compelling hook in the first line.
         }
       } catch (e) {
         console.log("Could not parse JSON, returning raw content");
+      }
+    }
+
+    // Parse contact categories
+    if (action === "categorize-contacts") {
+      try {
+        const arrayMatch = content.match(/\[[\s\S]*\]/);
+        if (arrayMatch) {
+          return new Response(JSON.stringify({ categories: JSON.parse(arrayMatch[0]) }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      } catch (e) {
+        console.log("Could not parse categories, returning empty");
+        return new Response(JSON.stringify({ categories: [] }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
     }
 
