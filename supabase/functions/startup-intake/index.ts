@@ -152,7 +152,7 @@ ${body.anythingElse || 'N/A'}
     // Log activity
     await supabase.from('activities').insert({
       user_id: userId,
-      type: 'deal_added',
+      type: 'deal_created',
       title: `New intake: ${body.companyName}`,
       description: `${body.fullName} submitted ${body.companyName} via intake form`,
       entity_type: 'deal',
