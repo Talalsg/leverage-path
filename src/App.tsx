@@ -13,6 +13,7 @@ import Portfolio from "./pages/Portfolio";
 import Ecosystem from "./pages/Ecosystem";
 import Insights from "./pages/Insights";
 import Strategy from "./pages/Strategy";
+import StartupIntake from "./pages/StartupIntake";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/intake" element={<StartupIntake />} />
             <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route index element={<Dashboard />} />
               <Route path="deals" element={<Deals />} />
