@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ExternalLink, FileText, Plus, Calendar, User, Building2, Target, TrendingUp, DollarSign, Briefcase, MapPin } from 'lucide-react';
+import { Loader2, ExternalLink, FileText, Plus, Calendar, User, Building2, Target, TrendingUp, DollarSign, Briefcase, MapPin, Pencil, Trash2, Check, X } from 'lucide-react';
 import { format } from 'date-fns';
 
 type DealStage = 'review' | 'evaluating' | 'passed' | 'term_sheet' | 'closed' | 'rejected';
@@ -68,6 +68,8 @@ export function DealDetailsModal({ deal, open, onOpenChange, onSaved }: DealDeta
   const [loadingDeck, setLoadingDeck] = useState(false);
   const [currentStage, setCurrentStage] = useState<DealStage>('review');
   const [updatingStage, setUpdatingStage] = useState(false);
+  const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(null);
+  const [editingNoteContent, setEditingNoteContent] = useState('');
 
   useEffect(() => {
     if (deal) {
@@ -165,6 +167,75 @@ export function DealDetailsModal({ deal, open, onOpenChange, onSaved }: DealDeta
     } finally {
       setSaving(false);
     }
+  };
+
+  const saveNotesToDatabase = async (updatedNotes: AnalysisNote[]) => {
+    if (!deal) return false;
+
+    try {
+      const existingNotes = deal.notes || '';
+      const withoutAnalysis = existingNotes.replace(/## Analysis Notes\n[\s\S]*?(?=\n## |$)/, '').trim();
+      
+      const analysisSection = updatedNotes.length > 0 
+        ? `## Analysis Notes\n${updatedNotes.map(n => `### ${n.date}\n${n.content}`).join('\n\n')}`
+        : '';
+      const finalNotes = withoutAnalysis + (withoutAnalysis && analysisSection ? '\n\n' : '') + analysisSection;
+
+      const { error } = await supabase
+        .from('deals')
+        .update({ notes: finalNotes })
+        .eq('id', deal.id);
+
+      if (error) throw error;
+      return true;
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      return false;
+    }
+  };
+
+  const handleEditNote = (index: number) => {
+    setEditingNoteIndex(index);
+    setEditingNoteContent(analysisNotes[index].content);
+  };
+
+  const handleSaveEditedNote = async () => {
+    if (editingNoteIndex === null || !editingNoteContent.trim()) return;
+    setSaving(true);
+
+    const updatedNotes = [...analysisNotes];
+    updatedNotes[editingNoteIndex] = {
+      ...updatedNotes[editingNoteIndex],
+      content: editingNoteContent.trim()
+    };
+
+    const success = await saveNotesToDatabase(updatedNotes);
+    if (success) {
+      setAnalysisNotes(updatedNotes);
+      setEditingNoteIndex(null);
+      setEditingNoteContent('');
+      toast({ title: 'Note updated', description: 'Your analysis note has been updated.' });
+      onSaved();
+    }
+    setSaving(false);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingNoteIndex(null);
+    setEditingNoteContent('');
+  };
+
+  const handleDeleteNote = async (index: number) => {
+    setSaving(true);
+    const updatedNotes = analysisNotes.filter((_, i) => i !== index);
+
+    const success = await saveNotesToDatabase(updatedNotes);
+    if (success) {
+      setAnalysisNotes(updatedNotes);
+      toast({ title: 'Note deleted', description: 'Your analysis note has been removed.' });
+      onSaved();
+    }
+    setSaving(false);
   };
 
   const handleStageChange = async (newStage: DealStage) => {
@@ -520,11 +591,66 @@ export function DealDetailsModal({ deal, open, onOpenChange, onSaved }: DealDeta
                   analysisNotes.map((note, index) => (
                     <Card key={index} className="bg-muted/20 border-border/50">
                       <CardContent className="p-3">
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                          <Calendar className="h-3 w-3" />
-                          {format(new Date(note.date), 'MMMM d, yyyy')}
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Calendar className="h-3 w-3" />
+                            {format(new Date(note.date), 'MMMM d, yyyy')}
+                          </div>
+                          {editingNoteIndex !== index && (
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                onClick={() => handleEditNote(index)}
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                onClick={() => handleDeleteNote(index)}
+                                disabled={saving}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )}
                         </div>
-                        <p className="text-sm text-card-foreground whitespace-pre-wrap">{note.content}</p>
+                        
+                        {editingNoteIndex === index ? (
+                          <div className="space-y-2">
+                            <Textarea
+                              value={editingNoteContent}
+                              onChange={(e) => setEditingNoteContent(e.target.value)}
+                              rows={3}
+                              className="resize-none bg-background text-foreground"
+                              autoFocus
+                            />
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                onClick={handleSaveEditedNote}
+                                disabled={saving || !editingNoteContent.trim()}
+                              >
+                                {saving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Check className="h-3 w-3 mr-1" />}
+                                Save
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={handleCancelEdit}
+                                disabled={saving}
+                              >
+                                <X className="h-3 w-3 mr-1" />
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-card-foreground whitespace-pre-wrap">{note.content}</p>
+                        )}
                       </CardContent>
                     </Card>
                   ))
