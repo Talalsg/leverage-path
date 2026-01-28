@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,8 @@ interface DecisionJournalModalProps {
 
 type Decision = 'pass' | 'invest' | 'monitor' | 'follow_up';
 
-export function DecisionJournalModal({ dealId, dealName, onSaved }: DecisionJournalModalProps) {
+export const DecisionJournalModal = forwardRef<HTMLDivElement, DecisionJournalModalProps>(
+  function DecisionJournalModal({ dealId, dealName, onSaved }, ref) {
   const { user } = useAuth();
   const { toast } = useToast();
   const { logActivity } = useActivityLogger();
@@ -84,27 +85,27 @@ export function DecisionJournalModal({ dealId, dealName, onSaved }: DecisionJour
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" className="bg-background border-border hover:bg-accent">
           <BookOpen className="h-4 w-4 mr-2" />
           Log Decision
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent ref={ref} className="max-w-lg bg-background border-border">
         <DialogHeader>
-          <DialogTitle>Decision Journal — {dealName}</DialogTitle>
+          <DialogTitle className="text-foreground">Decision Journal — {dealName}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div>
-            <Label>Decision *</Label>
+            <Label className="text-foreground">Decision *</Label>
             <Select value={formData.decision} onValueChange={v => setFormData({ ...formData, decision: v as Decision })}>
-              <SelectTrigger>
+              <SelectTrigger className="bg-background border-border">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-popover border-border">
                 {decisions.map(d => (
                   <SelectItem key={d.key} value={d.key}>
                     <div className="flex flex-col">
-                      <span>{d.label}</span>
+                      <span className="text-foreground">{d.label}</span>
                       <span className="text-xs text-muted-foreground">{d.description}</span>
                     </div>
                   </SelectItem>
@@ -114,17 +115,18 @@ export function DecisionJournalModal({ dealId, dealName, onSaved }: DecisionJour
           </div>
 
           <div>
-            <Label>Reasoning / Notes</Label>
+            <Label className="text-foreground">Reasoning / Notes</Label>
             <Textarea
               value={formData.reasoning}
               onChange={e => setFormData({ ...formData, reasoning: e.target.value })}
               placeholder="Why are you making this decision? What would need to change your mind?"
               rows={3}
+              className="bg-background border-border"
             />
           </div>
 
           <div>
-            <Label>Confidence Level: {formData.confidence_level}/10</Label>
+            <Label className="text-foreground">Confidence Level: {formData.confidence_level}/10</Label>
             <Slider
               value={[formData.confidence_level]}
               onValueChange={v => setFormData({ ...formData, confidence_level: v[0] })}
@@ -140,17 +142,18 @@ export function DecisionJournalModal({ dealId, dealName, onSaved }: DecisionJour
           </div>
 
           <div>
-            <Label>Market Conditions</Label>
+            <Label className="text-foreground">Market Conditions</Label>
             <Textarea
               value={formData.market_conditions}
               onChange={e => setFormData({ ...formData, market_conditions: e.target.value })}
               placeholder="Current market context that influenced this decision..."
               rows={2}
+              className="bg-background border-border"
             />
           </div>
 
           <div>
-            <Label className="flex items-center gap-2">
+            <Label className="flex items-center gap-2 text-foreground">
               <Calendar className="h-4 w-4" />
               Follow-up Date (optional)
             </Label>
@@ -158,6 +161,7 @@ export function DecisionJournalModal({ dealId, dealName, onSaved }: DecisionJour
               type="date"
               value={formData.follow_up_date}
               onChange={e => setFormData({ ...formData, follow_up_date: e.target.value })}
+              className="bg-background border-border"
             />
           </div>
 
@@ -168,4 +172,6 @@ export function DecisionJournalModal({ dealId, dealName, onSaved }: DecisionJour
       </DialogContent>
     </Dialog>
   );
-}
+});
+
+DecisionJournalModal.displayName = 'DecisionJournalModal';
