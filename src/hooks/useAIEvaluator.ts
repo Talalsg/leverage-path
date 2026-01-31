@@ -86,16 +86,21 @@ export function useAIEvaluator() {
 
       const result = data.result as ScoreResult;
 
+      // Safely handle AI response with fallbacks
+      const failureModes = Array.isArray(result?.failure_modes) 
+        ? result.failure_modes.join('\n') 
+        : (result?.failure_modes || '');
+
       // Update the deal with AI scores
       await supabase.from('deals').update({
-        ai_score: result.overall_score,
-        vision_2030_alignment: result.vision_2030_alignment,
-        founder_execution_score: result.founder_execution_score,
-        founder_sales_ability: result.founder_sales_ability,
-        iteration_speed: result.iteration_speed,
-        failure_modes: result.failure_modes.join('\n'),
-        exit_potential: result.exit_potential,
-        ai_analysis: result.reasoning,
+        ai_score: result?.overall_score ?? null,
+        vision_2030_alignment: result?.vision_2030_alignment ?? null,
+        founder_execution_score: result?.founder_execution_score ?? null,
+        founder_sales_ability: result?.founder_sales_ability ?? null,
+        iteration_speed: result?.iteration_speed ?? null,
+        failure_modes: failureModes,
+        exit_potential: result?.exit_potential ?? null,
+        ai_analysis: result?.reasoning ?? null,
       }).eq('id', deal.id);
 
       // Log the evaluation
@@ -108,7 +113,7 @@ export function useAIEvaluator() {
         model_used: 'gemini-2.5-flash',
       }]);
 
-      toast({ title: 'AI Score Complete', description: `Score: ${result.overall_score}/100 - ${result.recommendation}` });
+      toast({ title: 'AI Score Complete', description: `Score: ${result?.overall_score ?? 'N/A'}/100 - ${result?.recommendation ?? 'See details'}` });
       return result;
     } catch (error: any) {
       console.error('Score error:', error);
