@@ -113,25 +113,42 @@ export function DealDetailsModal({ deal, open, onOpenChange, onSaved }: DealDeta
       return;
     }
 
-    // Check if it's a Supabase storage path
-    if (url.startsWith('deal-documents/')) {
-      setLoadingDeck(true);
-      try {
+    setLoadingDeck(true);
+    
+    try {
+      let storagePath: string | null = null;
+
+      // Check if it's a direct storage path
+      if (url.startsWith('deal-documents/')) {
+        storagePath = url.replace('deal-documents/', '');
+      } 
+      // Check if it's a full Supabase storage URL (public or authenticated)
+      else if (url.includes('/storage/v1/object/')) {
+        // Extract path from URL like: .../storage/v1/object/public/deal-documents/intake/file.pdf
+        // or .../storage/v1/object/sign/deal-documents/intake/file.pdf
+        const match = url.match(/\/storage\/v1\/object\/(?:public|sign)\/deal-documents\/(.+?)(?:\?|$)/);
+        if (match) {
+          storagePath = match[1];
+        }
+      }
+
+      if (storagePath) {
+        // Generate a signed URL for private bucket access
         const { data, error } = await supabase.storage
           .from('deal-documents')
-          .createSignedUrl(url.replace('deal-documents/', ''), 3600);
+          .createSignedUrl(storagePath, 3600); // 1 hour expiry
         
         if (error) throw error;
         setDeckUrl(data.signedUrl);
-      } catch (error) {
-        console.error('Error loading deck URL:', error);
-        setDeckUrl(null);
-      } finally {
-        setLoadingDeck(false);
+      } else {
+        // It's an external URL (not from Supabase storage)
+        setDeckUrl(url);
       }
-    } else {
-      // It's an external URL
-      setDeckUrl(url);
+    } catch (error) {
+      console.error('Error loading deck URL:', error);
+      setDeckUrl(null);
+    } finally {
+      setLoadingDeck(false);
     }
   };
 
