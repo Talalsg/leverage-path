@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Target, Brain, Sparkles, GitCompare, BookOpen, BarChart3, Trash2, Pencil } from 'lucide-react';
+import { Plus, Target, Brain, Sparkles, GitCompare, BookOpen, BarChart3, Trash2, Pencil, TableIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AIAdvisor } from '@/components/AIAdvisor';
 import { DealEvaluatorModal } from '@/components/DealEvaluatorModal';
@@ -29,6 +29,8 @@ import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
 import { SearchFilter } from '@/components/SearchFilter';
 import { EditDealModal } from '@/components/EditDealModal';
 import { DealDetailsModal } from '@/components/DealDetailsModal';
+import { DealsTable, SortColumn } from '@/components/DealsTable';
+import { DealsQuickStats } from '@/components/DealsQuickStats';
 
 type DealStage = 'review' | 'evaluating' | 'passed' | 'term_sheet' | 'closed' | 'rejected';
 type DealOutcome = 'win' | 'miss' | 'regret' | 'noise' | 'pending';
@@ -86,12 +88,13 @@ const sectorOptions = [
   { value: 'other', label: 'Other' },
 ];
 
+const KANBAN_CAP = 20;
+const TABLE_PAGE_SIZE = 50;
+
 export default function Deals() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { logActivity } = useActivityLogger();
-  const [deals, setDeals] = useState<Deal[]>([]);
-  const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [evaluatorOpen, setEvaluatorOpen] = useState(false);
@@ -118,7 +121,7 @@ export default function Deals() {
   // Comparison state
   const [selectedDeals, setSelectedDeals] = useState<Set<string>>(new Set());
   const [comparisonOpen, setComparisonOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('pipeline');
+  const [activeTab, setActiveTab] = useState('table');
   
   // Portfolio conversion state
   const [portfolioConversionOpen, setPortfolioConversionOpen] = useState(false);
@@ -129,46 +132,148 @@ export default function Deals() {
   const [dealToDelete, setDealToDelete] = useState<Deal | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const fetchDeals = async () => {
+  // === Server-side pagination & sort state (Table view) ===
+  const [tableDeals, setTableDeals] = useState<Deal[]>([]);
+  const [tableLoading, setTableLoading] = useState(true);
+  const [tableTotalCount, setTableTotalCount] = useState(0);
+  const [tablePage, setTablePage] = useState(1);
+  const [sortColumn, setSortColumn] = useState<SortColumn>('created_at');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // === Quick stats state ===
+  const [quickStats, setQuickStats] = useState({
+    totalDeals: 0,
+    stageCounts: {} as Record<string, number>,
+    avgAiScore: null as number | null,
+    newThisMonth: 0,
+  });
+
+  // === Kanban state (capped) ===
+  const [kanbanDeals, setKanbanDeals] = useState<Deal[]>([]);
+  const [kanbanLoading, setKanbanLoading] = useState(true);
+
+  // Build server-side query with filters
+  const buildFilteredQuery = useCallback((baseQuery: any) => {
+    let q = baseQuery;
+    if (searchQuery) {
+      q = q.or(`company_name.ilike.%${searchQuery}%,sector.ilike.%${searchQuery}%,founder_name.ilike.%${searchQuery}%`);
+    }
+    if (filterValues.stage && filterValues.stage !== 'all') {
+      q = q.eq('stage', filterValues.stage);
+    }
+    if (filterValues.sector && filterValues.sector !== 'all') {
+      q = q.ilike('sector', `%${filterValues.sector}%`);
+    }
+    if (filterValues.outcome && filterValues.outcome !== 'all') {
+      if (filterValues.outcome === 'pending') {
+        q = q.or('outcome.is.null,outcome.eq.pending');
+      } else {
+        q = q.eq('outcome', filterValues.outcome);
+      }
+    }
+    return q;
+  }, [searchQuery, filterValues]);
+
+  // Fetch table deals (paginated, sorted, filtered)
+  const fetchTableDeals = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase.from('deals').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
-    setDeals(data as Deal[] || []);
-    setLoading(false);
-  };
+    setTableLoading(true);
 
-  useEffect(() => { fetchDeals(); }, [user]);
+    const from = (tablePage - 1) * TABLE_PAGE_SIZE;
+    const to = from + TABLE_PAGE_SIZE - 1;
 
-  // Filter deals based on search and filters
-  const filteredDeals = useMemo(() => {
-    return deals.filter(deal => {
-      // Search filter
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        const matchesSearch = 
-          deal.company_name.toLowerCase().includes(query) ||
-          (deal.sector?.toLowerCase() || '').includes(query) ||
-          (deal.founder_name?.toLowerCase() || '').includes(query);
-        if (!matchesSearch) return false;
+    let query = supabase
+      .from('deals')
+      .select('*', { count: 'exact' })
+      .eq('user_id', user.id)
+      .order(sortColumn, { ascending: sortDirection === 'asc' })
+      .range(from, to);
+
+    query = buildFilteredQuery(query);
+
+    const { data, count } = await query;
+    setTableDeals((data as Deal[]) || []);
+    setTableTotalCount(count || 0);
+    setTableLoading(false);
+  }, [user, tablePage, sortColumn, sortDirection, buildFilteredQuery]);
+
+  // Fetch quick stats (always unfiltered for total context)
+  const fetchQuickStats = useCallback(async () => {
+    if (!user) return;
+
+    const { data } = await supabase
+      .from('deals')
+      .select('stage, ai_score, created_at')
+      .eq('user_id', user.id);
+
+    if (!data) return;
+
+    const stageCounts: Record<string, number> = {};
+    let aiScoreSum = 0;
+    let aiScoreCount = 0;
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    let newThisMonth = 0;
+
+    for (const d of data) {
+      const stage = d.stage || 'review';
+      stageCounts[stage] = (stageCounts[stage] || 0) + 1;
+      if (d.ai_score) {
+        aiScoreSum += d.ai_score;
+        aiScoreCount++;
       }
-
-      // Stage filter
-      if (filterValues.stage && filterValues.stage !== 'all') {
-        if (deal.stage !== filterValues.stage) return false;
+      if (new Date(d.created_at) >= monthStart) {
+        newThisMonth++;
       }
+    }
 
-      // Sector filter
-      if (filterValues.sector && filterValues.sector !== 'all') {
-        if (!deal.sector?.toLowerCase().includes(filterValues.sector)) return false;
-      }
-
-      // Outcome filter
-      if (filterValues.outcome && filterValues.outcome !== 'all') {
-        if ((deal.outcome || 'pending') !== filterValues.outcome) return false;
-      }
-
-      return true;
+    setQuickStats({
+      totalDeals: data.length,
+      stageCounts,
+      avgAiScore: aiScoreCount > 0 ? Math.round(aiScoreSum / aiScoreCount) : null,
+      newThisMonth,
     });
-  }, [deals, searchQuery, filterValues]);
+  }, [user]);
+
+  // Fetch kanban deals (capped per stage, most recent first)
+  const fetchKanbanDeals = useCallback(async () => {
+    if (!user) return;
+    setKanbanLoading(true);
+
+    let query = supabase
+      .from('deals')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    query = buildFilteredQuery(query);
+
+    const { data } = await query;
+    setKanbanDeals((data as Deal[]) || []);
+    setKanbanLoading(false);
+  }, [user, buildFilteredQuery]);
+
+  // Reset page on filter/search change
+  useEffect(() => {
+    setTablePage(1);
+  }, [searchQuery, filterValues]);
+
+  // Fetch data based on active tab
+  useEffect(() => {
+    fetchQuickStats();
+    if (activeTab === 'table') {
+      fetchTableDeals();
+    } else if (activeTab === 'pipeline') {
+      fetchKanbanDeals();
+    }
+  }, [activeTab, fetchTableDeals, fetchKanbanDeals, fetchQuickStats]);
+
+  const refreshAll = () => {
+    fetchQuickStats();
+    if (activeTab === 'table') fetchTableDeals();
+    else if (activeTab === 'pipeline') fetchKanbanDeals();
+  };
 
   const handleCreate = async () => {
     if (!user || !formData.company_name) return;
@@ -187,12 +292,13 @@ export default function Deals() {
       logActivity({ type: 'deal_created', title: `Created deal: ${formData.company_name}`, entityType: 'deal' });
       setDialogOpen(false);
       setFormData({ company_name: '', sector: '', valuation_usd: '', founder_name: '', notes: '' });
-      fetchDeals();
+      refreshAll();
     }
   };
 
   const updateStage = async (id: string, stage: DealStage) => {
-    const deal = deals.find(d => d.id === id);
+    const allDeals = activeTab === 'table' ? tableDeals : kanbanDeals;
+    const deal = allDeals.find(d => d.id === id);
     const previousStage = deal?.stage;
     
     try {
@@ -204,7 +310,7 @@ export default function Deals() {
         setPortfolioConversionOpen(true);
       }
       
-      fetchDeals();
+      refreshAll();
     } catch (error: any) {
       toast({ title: 'Error updating stage', description: error.message, variant: 'destructive' });
     }
@@ -214,7 +320,7 @@ export default function Deals() {
     try {
       const { error } = await supabase.from('deals').update({ outcome }).eq('id', id);
       if (error) throw error;
-      fetchDeals();
+      refreshAll();
     } catch (error: any) {
       toast({ title: 'Error updating outcome', description: error.message, variant: 'destructive' });
     }
@@ -244,7 +350,10 @@ export default function Deals() {
     });
   };
 
-  const getSelectedDealsArray = () => deals.filter(d => selectedDeals.has(d.id));
+  const getSelectedDealsArray = () => {
+    const allDeals = activeTab === 'table' ? tableDeals : kanbanDeals;
+    return allDeals.filter(d => selectedDeals.has(d.id));
+  };
 
   const handleDelete = async () => {
     if (!dealToDelete) return;
@@ -264,7 +373,7 @@ export default function Deals() {
         next.delete(dealToDelete.id);
         return next;
       });
-      fetchDeals();
+      refreshAll();
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {
@@ -282,10 +391,26 @@ export default function Deals() {
     setFilterValues({});
   };
 
-  const dealsByStage = stages.map(s => ({
-    ...s,
-    deals: filteredDeals.filter(d => d.stage === s.key)
-  }));
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('desc');
+    }
+  };
+
+  // Kanban: cap deals per stage
+  const kanbanDealsByStage = useMemo(() => {
+    return stages.map(s => {
+      const stageDeals = kanbanDeals.filter(d => d.stage === s.key);
+      return {
+        ...s,
+        deals: stageDeals.slice(0, KANBAN_CAP),
+        totalCount: stageDeals.length,
+      };
+    });
+  }, [kanbanDeals]);
 
   const filterOptions = [
     { key: 'stage', label: 'Stage', options: stages.map(s => ({ value: s.key, label: s.label })) },
@@ -309,7 +434,7 @@ export default function Deals() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <CSVImport onImportComplete={fetchDeals} />
+          <CSVImport onImportComplete={refreshAll} />
           
           {selectedDeals.size >= 2 && (
             <Button variant="outline" size="sm" onClick={() => setComparisonOpen(true)}>
@@ -384,6 +509,14 @@ export default function Deals() {
         </div>
       </div>
 
+      {/* Quick Stats */}
+      <DealsQuickStats
+        totalDeals={quickStats.totalDeals}
+        stageCounts={quickStats.stageCounts}
+        avgAiScore={quickStats.avgAiScore}
+        newThisMonth={quickStats.newThisMonth}
+      />
+
       {/* Search and Filter */}
       <SearchFilter
         placeholder="Search deals by company, sector, or founder..."
@@ -398,8 +531,11 @@ export default function Deals() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="bg-muted/50">
+          <TabsTrigger value="table" className="data-[state=active]:bg-background">
+            <TableIcon className="h-4 w-4 mr-1.5" />Table
+          </TabsTrigger>
           <TabsTrigger value="pipeline" className="data-[state=active]:bg-background">
-            Pipeline ({filteredDeals.length})
+            Pipeline
           </TabsTrigger>
           <TabsTrigger value="metrics" className="data-[state=active]:bg-background">
             <BarChart3 className="h-4 w-4 mr-1.5" />Metrics
@@ -409,13 +545,37 @@ export default function Deals() {
           </TabsTrigger>
         </TabsList>
 
+        {/* Table View */}
+        <TabsContent value="table" className="mt-0">
+          <DealsTable
+            deals={tableDeals}
+            loading={tableLoading}
+            selectedDeals={selectedDeals}
+            onToggleSelect={toggleDealSelection}
+            onViewDetails={openDetailsModal}
+            onEvaluate={openEvaluator}
+            onEdit={openEditModal}
+            onDelete={openDeleteDialog}
+            onUpdateStage={updateStage}
+            onUpdateOutcome={updateOutcome}
+            onRefresh={refreshAll}
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            onSort={handleSort}
+            page={tablePage}
+            pageSize={TABLE_PAGE_SIZE}
+            totalCount={tableTotalCount}
+            onPageChange={setTablePage}
+          />
+        </TabsContent>
+
+        {/* Pipeline / Kanban View */}
         <TabsContent value="pipeline" className="mt-0">
           <div className="flex flex-col xl:flex-row gap-6">
-            {/* Kanban Board */}
             <div className="flex-1 min-w-0">
               <div className="overflow-x-auto pb-4">
                 <div className="flex gap-4" style={{ minWidth: 'max-content' }}>
-                  {loading ? (
+                  {kanbanLoading ? (
                     stages.map(stage => (
                       <div key={stage.key} className="w-[220px] flex-shrink-0">
                         <div className="flex items-center gap-2 mb-3 px-1">
@@ -437,14 +597,14 @@ export default function Deals() {
                       </div>
                     ))
                   ) : (
-                    dealsByStage.map(stage => (
+                    kanbanDealsByStage.map(stage => (
                       <div key={stage.key} className="w-[220px] flex-shrink-0">
                         {/* Stage Header */}
                         <div className="flex items-center gap-2 mb-3 px-1">
                           <div className={`h-2.5 w-2.5 rounded-full ${stage.color}`} />
                           <span className="font-semibold text-sm text-foreground">{stage.label}</span>
                           <Badge variant="secondary" className="ml-auto text-xs h-5 px-1.5 text-secondary-foreground">
-                            {stage.deals.length}
+                            {stage.totalCount}
                           </Badge>
                         </div>
 
@@ -463,7 +623,6 @@ export default function Deals() {
                               }`}
                             >
                               <CardContent className="p-3 space-y-3">
-                                {/* Header Row */}
                                 <div className="flex items-start gap-2">
                                   <Checkbox 
                                     checked={selectedDeals.has(deal.id)} 
@@ -498,7 +657,6 @@ export default function Deals() {
                                   </div>
                                 </div>
                                 
-                                {/* Dropdowns */}
                                 <div className="space-y-1.5">
                                   <Select value={deal.stage} onValueChange={v => updateStage(deal.id, v as DealStage)}>
                                     <SelectTrigger className="h-7 text-xs">
@@ -522,7 +680,6 @@ export default function Deals() {
                                   </Select>
                                 </div>
 
-                                {/* Action Buttons */}
                                 <div className="flex items-center gap-1 pt-1 border-t border-border/30">
                                   <Button 
                                     variant="ghost" 
@@ -532,7 +689,7 @@ export default function Deals() {
                                   >
                                     <Brain className="h-3 w-3 mr-1" />Evaluate
                                   </Button>
-                                  <DecisionJournalModal dealId={deal.id} dealName={deal.company_name} onSaved={fetchDeals} />
+                                  <DecisionJournalModal dealId={deal.id} dealName={deal.company_name} onSaved={refreshAll} />
                                   <Button 
                                     variant="ghost" 
                                     size="icon" 
@@ -553,6 +710,17 @@ export default function Deals() {
                               </CardContent>
                             </Card>
                           ))}
+                          {stage.totalCount > KANBAN_CAP && (
+                            <button
+                              onClick={() => {
+                                setFilterValues(prev => ({ ...prev, stage: stage.key }));
+                                setActiveTab('table');
+                              }}
+                              className="w-full text-xs text-primary hover:text-primary/80 py-2 text-center transition-colors"
+                            >
+                              View all {stage.totalCount} deals →
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))
@@ -561,16 +729,15 @@ export default function Deals() {
               </div>
             </div>
 
-            {/* Sidebar */}
             <div className="w-full xl:w-80 flex-shrink-0 space-y-4">
-              <DealVelocityChart deals={filteredDeals} />
+              <DealVelocityChart deals={kanbanDeals} />
               <AIAdvisor />
             </div>
           </div>
         </TabsContent>
 
         <TabsContent value="metrics" className="mt-0">
-          <DealFlowMetrics deals={deals} />
+          <DealFlowMetrics deals={kanbanDeals.length > 0 ? kanbanDeals : tableDeals} />
         </TabsContent>
 
         <TabsContent value="patterns" className="mt-0">
@@ -581,11 +748,11 @@ export default function Deals() {
         </TabsContent>
       </Tabs>
 
-      <DealEvaluatorModal deal={selectedDeal} open={evaluatorOpen} onOpenChange={setEvaluatorOpen} onComplete={fetchDeals} />
+      <DealEvaluatorModal deal={selectedDeal} open={evaluatorOpen} onOpenChange={setEvaluatorOpen} onComplete={refreshAll} />
       <DealComparison deals={getSelectedDealsArray()} open={comparisonOpen} onOpenChange={setComparisonOpen} />
-      <CreatePortfolioFromDealModal deal={dealToConvert} open={portfolioConversionOpen} onOpenChange={setPortfolioConversionOpen} onComplete={fetchDeals} />
-      <EditDealModal deal={dealToEdit} open={editModalOpen} onOpenChange={setEditModalOpen} onSaved={fetchDeals} />
-      <DealDetailsModal deal={dealToView} open={detailsModalOpen} onOpenChange={setDetailsModalOpen} onSaved={fetchDeals} />
+      <CreatePortfolioFromDealModal deal={dealToConvert} open={portfolioConversionOpen} onOpenChange={setPortfolioConversionOpen} onComplete={refreshAll} />
+      <EditDealModal deal={dealToEdit} open={editModalOpen} onOpenChange={setEditModalOpen} onSaved={refreshAll} />
+      <DealDetailsModal deal={dealToView} open={detailsModalOpen} onOpenChange={setDetailsModalOpen} onSaved={refreshAll} />
       <DeleteConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} onConfirm={handleDelete} title="Delete Deal" itemName={dealToDelete?.company_name} loading={deleting} />
     </div>
   );
