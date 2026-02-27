@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2, Pencil } from 'lucide-react';
+import { Plus, Trash2, Pencil, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ExitScenarioModal } from '@/components/ExitScenarioModal';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
@@ -15,6 +15,8 @@ import { PortfolioHealthDashboard } from '@/components/PortfolioHealthDashboard'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
 import { SearchFilter } from '@/components/SearchFilter';
 import { EditPortfolioModal } from '@/components/EditPortfolioModal';
+import { Skeleton } from '@/components/ui/skeleton';
+import { downloadCSV } from '@/lib/csvExport';
 
 interface Position {
   id: string;
@@ -174,19 +176,37 @@ export default function Portfolio() {
           <h1 className="text-3xl font-bold">Portfolio</h1>
           <p className="text-muted-foreground">Track equity positions and projected returns</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Add Position</Button></DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Add Portfolio Position</DialogTitle></DialogHeader>
-            <div className="space-y-4">
-              <div><Label>Company Name *</Label><Input value={formData.company_name} onChange={e => setFormData({...formData, company_name: e.target.value})} /></div>
-              <div><Label>Sector</Label><Input value={formData.sector} onChange={e => setFormData({...formData, sector: e.target.value})} /></div>
-              <div><Label>Entry Valuation (USD)</Label><Input type="number" value={formData.entry_valuation_usd} onChange={e => setFormData({...formData, entry_valuation_usd: e.target.value})} /></div>
-              <div><Label>Your Equity %</Label><Input type="number" step="0.1" value={formData.equity_percent} onChange={e => setFormData({...formData, equity_percent: e.target.value})} /></div>
-              <Button onClick={handleCreate} className="w-full">Add Position</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={async () => {
+            if (!user) return;
+            const { data } = await supabase.from('portfolio').select('*').eq('user_id', user.id);
+            if (data) downloadCSV(data, [
+              { key: 'company_name', label: 'Company' },
+              { key: 'sector', label: 'Sector' },
+              { key: 'equity_percent', label: 'Equity %' },
+              { key: 'entry_valuation_usd', label: 'Entry Valuation' },
+              { key: 'current_valuation_usd', label: 'Current Valuation' },
+              { key: 'status', label: 'Status' },
+              { key: 'health_status', label: 'Health' },
+              { key: 'runway_months', label: 'Runway (months)' },
+            ], 'portfolio-export');
+          }}>
+            <Download className="h-4 w-4 mr-2" />Export CSV
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Add Position</Button></DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Add Portfolio Position</DialogTitle></DialogHeader>
+              <div className="space-y-4">
+                <div><Label>Company Name *</Label><Input value={formData.company_name} onChange={e => setFormData({...formData, company_name: e.target.value})} /></div>
+                <div><Label>Sector</Label><Input value={formData.sector} onChange={e => setFormData({...formData, sector: e.target.value})} /></div>
+                <div><Label>Entry Valuation (USD)</Label><Input type="number" value={formData.entry_valuation_usd} onChange={e => setFormData({...formData, entry_valuation_usd: e.target.value})} /></div>
+                <div><Label>Your Equity %</Label><Input type="number" step="0.1" value={formData.equity_percent} onChange={e => setFormData({...formData, equity_percent: e.target.value})} /></div>
+                <Button onClick={handleCreate} className="w-full">Add Position</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Search and Filter */}
@@ -200,27 +220,41 @@ export default function Portfolio() {
         onClearAll={clearAllFilters}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-card border-border/50">
-          <CardContent className="p-5">
-            <p className="text-sm text-muted-foreground">Total Positions</p>
-            <p className="text-3xl font-bold mt-1">{filteredPositions.length}</p>
-            <p className="text-xs text-muted-foreground/70">Target: 5-10 by EOY 2026</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-border/50">
-          <CardContent className="p-5">
-            <p className="text-sm text-muted-foreground">Paper Value</p>
-            <p className="text-3xl font-bold mt-1 text-accent">${(totalPaperValue / 1000).toFixed(0)}K</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-border/50">
-          <CardContent className="p-5">
-            <p className="text-sm text-muted-foreground">Active Positions</p>
-            <p className="text-3xl font-bold mt-1">{filteredPositions.filter(p => p.status === 'active').length}</p>
-          </CardContent>
-        </Card>
-      </div>
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map(i => (
+            <Card key={i} className="bg-card border-border/50">
+              <CardContent className="p-5 space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-8 w-16" />
+                <Skeleton className="h-3 w-32" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="bg-card border-border/50">
+            <CardContent className="p-5">
+              <p className="text-sm text-muted-foreground">Total Positions</p>
+              <p className="text-3xl font-bold mt-1">{filteredPositions.length}</p>
+              <p className="text-xs text-muted-foreground/70">Target: 5-10 by EOY 2026</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-card border-border/50">
+            <CardContent className="p-5">
+              <p className="text-sm text-muted-foreground">Paper Value</p>
+              <p className="text-3xl font-bold mt-1 text-accent">${(totalPaperValue / 1000).toFixed(0)}K</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-card border-border/50">
+            <CardContent className="p-5">
+              <p className="text-sm text-muted-foreground">Active Positions</p>
+              <p className="text-3xl font-bold mt-1">{filteredPositions.filter(p => p.status === 'active').length}</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <PortfolioHealthDashboard />
 
