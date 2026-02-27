@@ -21,7 +21,7 @@ import {
   BarChart3,
   BookOpen
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 
 interface Deal {
   id: string;
@@ -30,6 +30,13 @@ interface Deal {
   ai_score: number | null;
   sector: string | null;
   created_at: string;
+}
+
+interface WeeklyDigest {
+  dealsAdded: number;
+  dealsMovedStages: number;
+  contactsAdded: number;
+  insightsCreated: number;
 }
 
 interface DashboardStats {
@@ -45,6 +52,7 @@ interface DashboardStats {
     description: string | null;
     created_at: string;
   }>;
+  weeklyDigest: WeeklyDigest;
 }
 
 const currentYear = 2026;
@@ -69,6 +77,7 @@ export default function Dashboard() {
     insightsPublished: 0,
     deals: [],
     recentActivities: [],
+    weeklyDigest: { dealsAdded: 0, dealsMovedStages: 0, contactsAdded: 0, insightsCreated: 0 },
   });
   const [loading, setLoading] = useState(true);
   const [showCharts, setShowCharts] = useState(true);
@@ -78,13 +87,20 @@ export default function Dashboard() {
     if (!user) return;
     
     const fetchStats = async () => {
-      const [dealsResult, dealsDataResult, portfolioResult, contactsResult, insightsResult, activitiesResult] = await Promise.all([
+      const sevenDaysAgo = subDays(new Date(), 7).toISOString();
+      
+      const [dealsResult, dealsDataResult, portfolioResult, contactsResult, insightsResult, activitiesResult, weekDealsResult, weekContactsResult, weekInsightsResult, weekStageMovesResult] = await Promise.all([
         supabase.from('deals').select('id', { count: 'exact' }).eq('user_id', user.id).not('stage', 'in', '("closed","rejected")'),
         supabase.from('deals').select('id, stage, outcome, ai_score, sector, created_at').eq('user_id', user.id),
         supabase.from('portfolio').select('id', { count: 'exact' }).eq('user_id', user.id).eq('status', 'active'),
         supabase.from('contacts').select('id', { count: 'exact' }).eq('user_id', user.id).eq('is_key_ten', true),
         supabase.from('insights').select('id', { count: 'exact' }).eq('user_id', user.id).eq('status', 'published'),
         supabase.from('activities').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
+        // Weekly digest queries
+        supabase.from('deals').select('id', { count: 'exact' }).eq('user_id', user.id).gte('created_at', sevenDaysAgo),
+        supabase.from('contacts').select('id', { count: 'exact' }).eq('user_id', user.id).gte('created_at', sevenDaysAgo),
+        supabase.from('insights').select('id', { count: 'exact' }).eq('user_id', user.id).gte('created_at', sevenDaysAgo),
+        supabase.from('activities').select('id', { count: 'exact' }).eq('user_id', user.id).eq('type', 'stage_change').gte('created_at', sevenDaysAgo),
       ]);
 
       setStats({
@@ -94,6 +110,12 @@ export default function Dashboard() {
         insightsPublished: insightsResult.count || 0,
         deals: (dealsDataResult.data as Deal[]) || [],
         recentActivities: activitiesResult.data || [],
+        weeklyDigest: {
+          dealsAdded: weekDealsResult.count || 0,
+          dealsMovedStages: weekStageMovesResult.count || 0,
+          contactsAdded: weekContactsResult.count || 0,
+          insightsCreated: weekInsightsResult.count || 0,
+        },
       });
       setLoading(false);
     };
@@ -214,7 +236,40 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Analytics Charts */}
+      {/* Weekly Digest */}
+      <Card className="bg-card border-border/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-accent" />
+            Weekly Digest
+            <Badge variant="outline" className="ml-auto text-xs font-normal text-muted-foreground">Last 7 days</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {[
+              { label: 'Deals Added', value: stats.weeklyDigest.dealsAdded, icon: Target, color: 'text-primary' },
+              { label: 'Stage Moves', value: stats.weeklyDigest.dealsMovedStages, icon: TrendingUp, color: 'text-accent' },
+              { label: 'Contacts Added', value: stats.weeklyDigest.contactsAdded, icon: Users, color: 'text-tier-gatekeeper' },
+              { label: 'Insights Created', value: stats.weeklyDigest.insightsCreated, icon: Lightbulb, color: 'text-warning' },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <div className={`p-2 rounded-md bg-background ${item.color}`}>
+                  <item.icon className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{item.value}</p>
+                  <p className="text-xs text-muted-foreground">{item.label}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          {stats.weeklyDigest.dealsAdded === 0 && stats.weeklyDigest.contactsAdded === 0 && stats.weeklyDigest.insightsCreated === 0 && stats.weeklyDigest.dealsMovedStages === 0 && (
+            <p className="text-sm text-muted-foreground text-center mt-4">Quiet week — time to generate some signal.</p>
+          )}
+        </CardContent>
+      </Card>
+
       {stats.deals.length > 0 && (
         <Card className="bg-card border-border/50">
           <CardHeader className="pb-2">
