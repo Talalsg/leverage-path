@@ -284,6 +284,22 @@ export default function Portfolio() {
                 {position.equity_percent && <p className="text-sm"><span className="text-muted-foreground">Equity:</span> {position.equity_percent}%</p>}
                 {position.entry_valuation_usd && <p className="text-sm"><span className="text-muted-foreground">Entry:</span> ${(position.entry_valuation_usd / 1000000).toFixed(1)}M</p>}
                 {position.runway_months && <p className="text-sm"><span className="text-muted-foreground">Runway:</span> {position.runway_months} months</p>}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Multiple:</span>
+                  {(() => {
+                    if (!position.entry_valuation_usd || position.entry_valuation_usd === 0 || !position.current_valuation_usd) return <span className="text-sm text-muted-foreground">—</span>;
+                    const multiple = position.current_valuation_usd / position.entry_valuation_usd;
+                    return (
+                      <Badge variant="outline" className={
+                        multiple > 1 ? 'text-green-500 border-green-500/50' :
+                        multiple < 1 ? 'text-destructive border-destructive/50' :
+                        'text-muted-foreground border-border'
+                      }>
+                        {multiple.toFixed(1)}x
+                      </Badge>
+                    );
+                  })()}
+                </div>
               </div>
               <div className="mt-4 flex gap-2">
                 <ExitScenarioModal 
