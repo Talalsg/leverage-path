@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Lightbulb, Sparkles, Loader2, Trash2, Pencil, Heart, MessageSquare, Share2, TrendingUp, CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, getDay } from 'date-fns';
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, getDay } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
@@ -205,6 +205,13 @@ export default function Insights() {
     }
   };
 
+  const quickSchedule = async (insightId: string, date: Date | undefined) => {
+    if (!date) return;
+    const { error } = await supabase.from('insights').update({ scheduled_date: format(date, 'yyyy-MM-dd') }).eq('id', insightId);
+    if (error) { toast({ title: 'Error', description: error.message, variant: 'destructive' }); }
+    else { toast({ title: 'Scheduled', description: format(date, 'PPP') }); fetchInsights(); }
+  };
+
   const openDeleteDialog = (insight: Insight) => {
     setInsightToDelete(insight);
     setDeleteDialogOpen(true);
@@ -345,6 +352,22 @@ export default function Insights() {
                         )}
                       </div>
                       <div className="flex gap-1">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button size="icon" variant="ghost" className={cn("h-7 w-7", insight.scheduled_date && "text-primary")}>
+                              <CalendarIcon className="h-3 w-3" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="end">
+                            <Calendar
+                              mode="single"
+                              selected={insight.scheduled_date ? parseISO(insight.scheduled_date) : undefined}
+                              onSelect={(d) => quickSchedule(insight.id, d)}
+                              initialFocus
+                              className={cn("p-3 pointer-events-auto")}
+                            />
+                          </PopoverContent>
+                        </Popover>
                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditModal(insight)}>
                           <Pencil className="h-3 w-3" />
                         </Button>
