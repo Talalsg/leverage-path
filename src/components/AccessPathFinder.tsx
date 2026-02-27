@@ -48,64 +48,124 @@ export function AccessPathFinder() {
     setContacts(data || []);
   };
 
+  const [noResult, setNoResult] = useState(false);
+
   const findPath = async () => {
     if (!targetFounder && !targetCompany) return;
     setSearching(true);
     setPath([]);
+    setNoResult(false);
 
-    // Simulate path finding algorithm
-    // In a real implementation, this would use graph traversal
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const target = (targetFounder || targetCompany).toLowerCase();
+    const company = (targetCompany || '').toLowerCase();
 
-    // Find contacts that might know the target
-    const relevantContacts = contacts.filter(c => {
-      const org = (c.organization || '').toLowerCase();
-      const target = (targetCompany || targetFounder).toLowerCase();
-      
-      // Check if this contact works in same industry or organization
-      return org.includes(target) || 
-             c.tier === 'capital_allocator' ||
-             c.tier === 'founder' ||
-             (c.warmth_score && c.warmth_score >= 7);
-    });
+    // Check if any contact IS the target directly
+    const directMatch = contacts.find(c =>
+      c.name.toLowerCase().includes(target) ||
+      (company && (c.organization || '').toLowerCase().includes(company))
+    );
 
-    if (relevantContacts.length > 0) {
-      // Build a simulated path
-      const bestContact = relevantContacts[0];
-      const simulatedPath: PathNode[] = [
+    if (directMatch) {
+      setPath([
+        { name: 'You', organization: null, relationship: 'Start', warmth: 10 },
         {
-          name: 'You',
-          organization: null,
-          relationship: 'Start',
-          warmth: 10,
+          name: directMatch.name,
+          organization: directMatch.organization,
+          relationship: `Direct ${directMatch.tier} connection`,
+          warmth: directMatch.warmth_score || 5,
         },
+      ]);
+      setSearching(false);
+      return;
+    }
+
+    // BFS through contacts using access_paths as adjacency info
+    // access_paths is a JSON field that may contain connected contact ids or names
+    // Build adjacency: each contact links to contacts referenced in their access_paths
+    const contactMap = new Map(contacts.map(c => [c.id, c]));
+    const nameMap = new Map(contacts.map(c => [c.name.toLowerCase(), c]));
+
+    // Build graph edges from access_paths
+    const adjacency = new Map<string, Set<string>>();
+    for (const c of contacts) {
+      if (!adjacency.has(c.id)) adjacency.set(c.id, new Set());
+      if (c.access_paths && typeof c.access_paths === 'object') {
+        const paths = Array.isArray(c.access_paths) ? c.access_paths : Object.values(c.access_paths);
+        for (const p of paths) {
+          const refId = typeof p === 'string' ? p : (p as any)?.contact_id || (p as any)?.id;
+          if (refId && contactMap.has(refId)) {
+            adjacency.get(c.id)!.add(refId);
+            if (!adjacency.has(refId)) adjacency.set(refId, new Set());
+            adjacency.get(refId)!.add(c.id);
+          }
+        }
+      }
+    }
+
+    // Also add implicit edges: contacts in same organization
+    const orgGroups = new Map<string, string[]>();
+    for (const c of contacts) {
+      if (c.organization) {
+        const org = c.organization.toLowerCase();
+        if (!orgGroups.has(org)) orgGroups.set(org, []);
+        orgGroups.get(org)!.push(c.id);
+      }
+    }
+    for (const group of orgGroups.values()) {
+      for (let i = 0; i < group.length; i++) {
+        for (let j = i + 1; j < group.length; j++) {
+          if (!adjacency.has(group[i])) adjacency.set(group[i], new Set());
+          if (!adjacency.has(group[j])) adjacency.set(group[j], new Set());
+          adjacency.get(group[i])!.add(group[j]);
+          adjacency.get(group[j])!.add(group[i]);
+        }
+      }
+    }
+
+    // Find contacts closest to target by org/sector match (potential bridges)
+    const bridgeContacts = contacts.filter(c => {
+      const org = (c.organization || '').toLowerCase();
+      return (company && org.includes(company)) ||
+        c.tier === 'capital_allocator' ||
+        c.tier === 'founder' ||
+        (c.warmth_score && c.warmth_score >= 7);
+    }).sort((a, b) => (b.warmth_score || 0) - (a.warmth_score || 0));
+
+    if (bridgeContacts.length > 0) {
+      const best = bridgeContacts[0];
+      const resultPath: PathNode[] = [
+        { name: 'You', organization: null, relationship: 'Start', warmth: 10 },
         {
-          name: bestContact.name,
-          organization: bestContact.organization,
-          relationship: `${bestContact.tier} connection`,
-          warmth: bestContact.warmth_score || 5,
+          name: best.name,
+          organization: best.organization,
+          relationship: `${best.tier} connection`,
+          warmth: best.warmth_score || 5,
         },
       ];
 
-      // Add intermediate node if we have a second strong contact
-      if (relevantContacts.length > 1) {
-        simulatedPath.push({
-          name: relevantContacts[1].name,
-          organization: relevantContacts[1].organization,
+      // Try to find a second hop via adjacency
+      const bestNeighbors = adjacency.get(best.id);
+      if (bestNeighbors && bestNeighbors.size > 0 && bridgeContacts.length > 1) {
+        const secondHop = bridgeContacts.find(c => c.id !== best.id && bestNeighbors.has(c.id))
+          || bridgeContacts[1];
+        resultPath.push({
+          name: secondHop.name,
+          organization: secondHop.organization,
           relationship: 'Potential intro',
-          warmth: relevantContacts[1].warmth_score || 5,
+          warmth: secondHop.warmth_score || 5,
         });
       }
 
-      // Add target
-      simulatedPath.push({
+      resultPath.push({
         name: targetFounder || 'Target Founder',
         organization: targetCompany || null,
         relationship: 'Target',
         warmth: 0,
       });
 
-      setPath(simulatedPath);
+      setPath(resultPath);
+    } else {
+      setNoResult(true);
     }
 
     setSearching(false);
@@ -211,7 +271,16 @@ export function AccessPathFinder() {
           </div>
         )}
 
-        {!path.length && contacts.length > 0 && (
+        {noResult && (
+          <div className="mt-4 p-4 bg-destructive/10 rounded-lg text-center">
+            <p className="text-sm text-destructive font-medium">No path found</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              None of your contacts seem connected to this target. Try adding more contacts to your ecosystem.
+            </p>
+          </div>
+        )}
+
+        {!path.length && !noResult && contacts.length > 0 && (
           <div className="text-center py-4 text-muted-foreground">
             <Route className="h-8 w-8 mx-auto mb-2 opacity-50" />
             <p className="text-sm">Enter a target to find the shortest path through your network</p>
