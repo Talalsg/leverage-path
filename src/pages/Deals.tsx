@@ -306,9 +306,33 @@ export default function Deals() {
       const { error } = await supabase.from('deals').update({ stage }).eq('id', id);
       if (error) throw error;
       
-      if (stage === 'closed' && previousStage !== 'closed' && deal) {
-        setDealToConvert(deal);
-        setPortfolioConversionOpen(true);
+      // Auto-create portfolio position when deal is closed
+      if (stage === 'closed' && previousStage !== 'closed' && deal && user) {
+        const { data: existing } = await supabase
+          .from('portfolio')
+          .select('id')
+          .eq('deal_id', deal.id)
+          .maybeSingle();
+
+        if (!existing) {
+          const { error: pErr } = await supabase.from('portfolio').insert({
+            user_id: user.id,
+            deal_id: deal.id,
+            company_name: deal.company_name,
+            sector: deal.sector,
+            entry_valuation_usd: deal.valuation_usd,
+            equity_percent: deal.equity_offered,
+            entry_date: new Date().toISOString().split('T')[0],
+            status: 'active',
+            health_status: 'healthy',
+          });
+          if (pErr) {
+            toast({ title: 'Portfolio error', description: pErr.message, variant: 'destructive' });
+          } else {
+            logActivity({ type: 'portfolio_added', title: `Auto-added ${deal.company_name} to portfolio`, entityType: 'portfolio' });
+            toast({ title: 'Portfolio updated', description: `${deal.company_name} was automatically added to your portfolio.` });
+          }
+        }
       }
       
       refreshAll();
