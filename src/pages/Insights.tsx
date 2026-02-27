@@ -329,7 +329,22 @@ export default function Insights() {
             </Card>
           ))}
           {filteredInsights.length === 0 && !loading && (
-            <Card className="col-span-full bg-muted/30 border-dashed"><CardContent className="p-8 text-center text-muted-foreground">No insights found. {searchQuery || Object.keys(filterValues).length > 0 ? 'Try adjusting your filters.' : 'Capture your first idea.'}</CardContent></Card>
+            <Card className="col-span-full bg-muted/30 border-dashed">
+              <CardContent className="p-12 flex flex-col items-center gap-3 text-center">
+                <Lightbulb className="h-10 w-10 text-muted-foreground/50" />
+                {searchQuery || Object.keys(filterValues).length > 0 ? (
+                  <>
+                    <h3 className="font-semibold text-lg">No results match your filters</h3>
+                    <p className="text-sm text-muted-foreground">Try adjusting your search or filter criteria.</p>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="font-semibold text-lg">No insights yet</h3>
+                    <p className="text-sm text-muted-foreground max-w-sm">Write your first piece. Capture ideas, draft content, and track engagement.</p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
           )}
         </div>
       )}
