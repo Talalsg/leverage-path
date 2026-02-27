@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2, Pencil, Download } from 'lucide-react';
+import { Plus, Trash2, Pencil, Download, Briefcase } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ExitScenarioModal } from '@/components/ExitScenarioModal';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
@@ -303,7 +303,22 @@ export default function Portfolio() {
           </Card>
         ))}
         {filteredPositions.length === 0 && !loading && (
-          <Card className="col-span-full bg-muted/30 border-dashed"><CardContent className="p-8 text-center text-muted-foreground">No positions found. {searchQuery || Object.keys(filterValues).length > 0 ? 'Try adjusting your filters.' : 'Add your first equity position.'}</CardContent></Card>
+          <Card className="col-span-full bg-muted/30 border-dashed">
+            <CardContent className="p-12 flex flex-col items-center gap-3 text-center">
+              <Briefcase className="h-10 w-10 text-muted-foreground/50" />
+              {searchQuery || Object.keys(filterValues).length > 0 ? (
+                <>
+                  <h3 className="font-semibold text-lg">No results match your filters</h3>
+                  <p className="text-sm text-muted-foreground">Try adjusting your search or filter criteria.</p>
+                </>
+              ) : (
+                <>
+                  <h3 className="font-semibold text-lg">No positions yet</h3>
+                  <p className="text-sm text-muted-foreground max-w-sm">Close a deal to add your first equity position. Use the "Add Position" button above to get started.</p>
+                </>
+              )}
+            </CardContent>
+          </Card>
         )}
       </div>
 

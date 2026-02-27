@@ -269,7 +269,22 @@ export default function Ecosystem() {
           );
         })}
         {filteredContacts.length === 0 && !loading && (
-          <Card className="col-span-full bg-muted/30 border-dashed"><CardContent className="p-8 text-center text-muted-foreground">No contacts found. {searchQuery || Object.keys(filterValues).length > 0 ? 'Try adjusting your filters.' : 'Start building your network.'}</CardContent></Card>
+          <Card className="col-span-full bg-muted/30 border-dashed">
+            <CardContent className="p-12 flex flex-col items-center gap-3 text-center">
+              <Users className="h-10 w-10 text-muted-foreground/50" />
+              {searchQuery || Object.keys(filterValues).length > 0 ? (
+                <>
+                  <h3 className="font-semibold text-lg">No results match your filters</h3>
+                  <p className="text-sm text-muted-foreground">Try adjusting your search or filter criteria.</p>
+                </>
+              ) : (
+                <>
+                  <h3 className="font-semibold text-lg">No contacts yet</h3>
+                  <p className="text-sm text-muted-foreground max-w-sm">Add your first relationship. Build your network of founders, investors, and advisors.</p>
+                </>
+              )}
+            </CardContent>
+          </Card>
         )}
       </div>
 

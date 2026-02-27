@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Brain, Pencil, Trash2, ArrowUp, ArrowDown, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Brain, Pencil, Trash2, ArrowUp, ArrowDown, ArrowUpDown, ChevronLeft, ChevronRight, Target } from 'lucide-react';
 import { DecisionJournalModal } from '@/components/DecisionJournalModal';
 
 type DealStage = 'review' | 'evaluating' | 'passed' | 'term_sheet' | 'closed' | 'rejected';
@@ -126,8 +126,12 @@ export function DealsTable({
           <TableBody>
             {deals.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">
-                  No deals found
+                <TableCell colSpan={9} className="py-16">
+                  <div className="flex flex-col items-center gap-3 text-center">
+                    <Target className="h-10 w-10 text-muted-foreground/50" />
+                    <h3 className="font-semibold text-lg">No deals yet</h3>
+                    <p className="text-sm text-muted-foreground max-w-sm">Add your first deal or share your intake form to start tracking your pipeline.</p>
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (
