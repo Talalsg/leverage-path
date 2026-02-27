@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { format, parseISO } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -6,8 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type Status = 'idea' | 'draft' | 'published';
 
@@ -17,6 +21,7 @@ interface Insight {
   content: string | null;
   status: Status;
   platform: string | null;
+  scheduled_date: string | null;
   engagement_likes: number;
   engagement_comments: number;
   engagement_shares: number;
@@ -47,6 +52,7 @@ export function EditInsightModal({ insight, open, onOpenChange, onSaved }: EditI
     content: '',
     status: 'idea' as Status,
     platform: '',
+    scheduled_date: null as Date | null,
     engagement_likes: '',
     engagement_comments: '',
     engagement_shares: '',
@@ -60,6 +66,7 @@ export function EditInsightModal({ insight, open, onOpenChange, onSaved }: EditI
         content: insight.content || '',
         status: insight.status || 'idea',
         platform: insight.platform || '',
+        scheduled_date: insight.scheduled_date ? parseISO(insight.scheduled_date) : null,
         engagement_likes: insight.engagement_likes?.toString() || '0',
         engagement_comments: insight.engagement_comments?.toString() || '0',
         engagement_shares: insight.engagement_shares?.toString() || '0',
@@ -78,6 +85,7 @@ export function EditInsightModal({ insight, open, onOpenChange, onSaved }: EditI
         content: formData.content || null,
         status: formData.status,
         platform: formData.platform || null,
+        scheduled_date: formData.scheduled_date ? format(formData.scheduled_date, 'yyyy-MM-dd') : null,
         engagement_likes: parseInt(formData.engagement_likes) || 0,
         engagement_comments: parseInt(formData.engagement_comments) || 0,
         engagement_shares: parseInt(formData.engagement_shares) || 0,
@@ -163,6 +171,30 @@ export function EditInsightModal({ insight, open, onOpenChange, onSaved }: EditI
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div>
+            <Label>Schedule Date</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn("w-full justify-start text-left font-normal", !formData.scheduled_date && "text-muted-foreground")}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {formData.scheduled_date ? format(formData.scheduled_date, 'PPP') : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={formData.scheduled_date || undefined}
+                  onSelect={(d) => setFormData({ ...formData, scheduled_date: d || null })}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           {formData.status === 'published' && (
