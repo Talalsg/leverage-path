@@ -1,61 +1,31 @@
 
 
-## Batch Implementation: 4 Features
+## Empty States Enhancement
 
-### 1. Error Boundary Component
-**New file: `src/components/ErrorBoundary.tsx`**
-- React class component wrapping the entire app in `App.tsx`
-- Catches render errors, displays clean error screen with app branding, error message, and "Reload" button (`window.location.reload()`)
-- Uses existing Card, Button components and design system
+Each page already has basic empty state text. The plan upgrades them to meaningful, branded empty states with icons, descriptive copy, and action buttons.
 
-**Edit: `src/App.tsx`**
-- Wrap everything inside `<ErrorBoundary>` at the outermost level
+### Changes
 
-### 2. User Profile Page
-**New file: `src/pages/Profile.tsx`**
-- Shows user email (read-only from `useAuth`)
-- Editable display name field, fetched/updated via `profiles` table
-- Sign Out button (calls `signOut` from `useAuth`)
-- Uses existing Card, Input, Button, Label components
+**`src/components/DealsTable.tsx`** (lines 127-132)
+- Replace "No deals found" with an icon (Target), heading, description ("No deals yet. Add your first deal or share your intake form."), and an "Add Deal" action hint.
 
-**Edit: `src/App.tsx`**
-- Add `/profile` route inside the protected layout
+**`src/pages/Deals.tsx`** (lines 630-633, Kanban empty columns)
+- Keep the per-column "No deals" text as-is (it's contextual per stage). No change needed here.
 
-**Edit: `src/components/AppSidebar.tsx`**
-- Replace the footer Sign Out button + email text with a clickable user avatar/icon linking to `/profile`
-- Remove standalone Sign Out button (moved to Profile page)
-- Keep AlertsPanel and ThemeToggle in footer
+**`src/pages/Portfolio.tsx`** (lines 305-307)
+- Replace the simple text card with an icon (Briefcase), heading "No positions yet", description "Close a deal to add your first equity position.", and prompt to use the Add Position button.
 
-### 3. CSV Export (Deals + Portfolio)
-**New file: `src/lib/csvExport.ts`**
-- `downloadCSV(rows, columnDefs, filename)` utility: builds CSV string, creates Blob, triggers download
-- Generic, reusable for any table
+**`src/pages/Insights.tsx`** (lines 331-333)
+- Replace with icon (Lightbulb), heading "No insights yet", description "Write your first piece. Capture ideas, draft content, and track engagement.", contextual filter message when filters active.
 
-**Edit: `src/pages/Deals.tsx`**
-- Add "Export CSV" button in header next to "Add Deal"
-- On click: fetch ALL deals for user (no pagination), map to CSV columns (Company, Founder, Sector, Stage, AI Score, Valuation, Outcome, Date), call `downloadCSV`
+**`src/pages/Ecosystem.tsx`** (lines 271-273)
+- Replace with icon (Users), heading "No contacts yet", description "Add your first relationship. Build your network of founders, investors, and advisors.", contextual filter message when filters active.
 
-**Edit: `src/pages/Portfolio.tsx`**
-- Add "Export CSV" button in header next to "Add Position"
-- Exports: Company, Sector, Equity %, Entry Valuation, Current Valuation, Status, Health, Runway
+All empty states will:
+- Use existing Card/CardContent components
+- Include a relevant Lucide icon (already imported in each file)
+- Show different copy when filters are active ("No results match your filters. Try adjusting your search.")
+- Use muted-foreground text with the dashed border card style already in use
 
-### 4. Skeleton Loading States
-**Edit: `src/pages/Dashboard.tsx`**
-- When `loading === true`, render Skeleton placeholders for stat cards (4 skeleton cards), charts area, quarterly focus, and activity feed
-
-**Edit: `src/pages/Deals.tsx`**
-- Add skeleton for QuickStats row while `tableLoading` or `kanbanLoading`
-
-**Edit: `src/pages/Portfolio.tsx`**
-- When `loading === true`, render skeleton for the 3 stat cards and the position grid
-
-**Edit: `src/pages/Insights.tsx`**
-- When `loading === true`, render skeleton for the 3 stat cards and the insight cards grid
-
-All skeletons use the existing `<Skeleton />` component from `src/components/ui/skeleton.tsx`.
-
-### Files Summary
-- **New (3):** `ErrorBoundary.tsx`, `Profile.tsx`, `csvExport.ts`
-- **Edit (6):** `App.tsx`, `AppSidebar.tsx`, `Deals.tsx`, `Portfolio.tsx`, `Dashboard.tsx`, `Insights.tsx`
-- **No database changes.** Profiles table already has `display_name` column.
+**5 files edited, 0 new files.**
 
