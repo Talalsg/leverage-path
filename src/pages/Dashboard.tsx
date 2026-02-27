@@ -37,6 +37,7 @@ interface WeeklyDigest {
   dealsMovedStages: number;
   contactsAdded: number;
   insightsCreated: number;
+  prevWeekDeals: number;
 }
 
 interface DashboardStats {
@@ -77,7 +78,7 @@ export default function Dashboard() {
     insightsPublished: 0,
     deals: [],
     recentActivities: [],
-    weeklyDigest: { dealsAdded: 0, dealsMovedStages: 0, contactsAdded: 0, insightsCreated: 0 },
+    weeklyDigest: { dealsAdded: 0, dealsMovedStages: 0, contactsAdded: 0, insightsCreated: 0, prevWeekDeals: 0 },
   });
   const [loading, setLoading] = useState(true);
   const [showCharts, setShowCharts] = useState(true);
@@ -88,8 +89,9 @@ export default function Dashboard() {
     
     const fetchStats = async () => {
       const sevenDaysAgo = subDays(new Date(), 7).toISOString();
+      const fourteenDaysAgo = subDays(new Date(), 14).toISOString();
       
-      const [dealsResult, dealsDataResult, portfolioResult, contactsResult, insightsResult, activitiesResult, weekDealsResult, weekContactsResult, weekInsightsResult, weekStageMovesResult] = await Promise.all([
+      const [dealsResult, dealsDataResult, portfolioResult, contactsResult, insightsResult, activitiesResult, weekDealsResult, weekContactsResult, weekInsightsResult, weekStageMovesResult, prevWeekDealsResult] = await Promise.all([
         supabase.from('deals').select('id', { count: 'exact' }).eq('user_id', user.id).not('stage', 'in', '("closed","rejected")'),
         supabase.from('deals').select('id, stage, outcome, ai_score, sector, created_at').eq('user_id', user.id),
         supabase.from('portfolio').select('id', { count: 'exact' }).eq('user_id', user.id).eq('status', 'active'),
@@ -101,6 +103,8 @@ export default function Dashboard() {
         supabase.from('contacts').select('id', { count: 'exact' }).eq('user_id', user.id).gte('created_at', sevenDaysAgo),
         supabase.from('insights').select('id', { count: 'exact' }).eq('user_id', user.id).gte('created_at', sevenDaysAgo),
         supabase.from('activities').select('id', { count: 'exact' }).eq('user_id', user.id).eq('type', 'stage_change').gte('created_at', sevenDaysAgo),
+        // Previous week deals for trend
+        supabase.from('deals').select('id', { count: 'exact' }).eq('user_id', user.id).gte('created_at', fourteenDaysAgo).lt('created_at', sevenDaysAgo),
       ]);
 
       setStats({
@@ -115,6 +119,7 @@ export default function Dashboard() {
           dealsMovedStages: weekStageMovesResult.count || 0,
           contactsAdded: weekContactsResult.count || 0,
           insightsCreated: weekInsightsResult.count || 0,
+          prevWeekDeals: prevWeekDealsResult.count || 0,
         },
       });
       setLoading(false);
@@ -241,8 +246,10 @@ export default function Dashboard() {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5 text-accent" />
-            Weekly Digest
-            <Badge variant="outline" className="ml-auto text-xs font-normal text-muted-foreground">Last 7 days</Badge>
+            This Week's Activity
+            <Badge variant="outline" className="ml-auto text-xs font-normal text-muted-foreground">
+              {format(subDays(new Date(), 6), 'MMM d')} – {format(new Date(), 'MMM d')}
+            </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -267,6 +274,12 @@ export default function Dashboard() {
           {stats.weeklyDigest.dealsAdded === 0 && stats.weeklyDigest.contactsAdded === 0 && stats.weeklyDigest.insightsCreated === 0 && stats.weeklyDigest.dealsMovedStages === 0 && (
             <p className="text-sm text-muted-foreground text-center mt-4">Quiet week — time to generate some signal.</p>
           )}
+          {(() => {
+            const diff = stats.weeklyDigest.dealsAdded - stats.weeklyDigest.prevWeekDeals;
+            if (diff > 0) return <p className="text-xs text-green-600 mt-3 text-center">↑ +{diff} deals vs last week</p>;
+            if (diff < 0) return <p className="text-xs text-destructive mt-3 text-center">↓ {diff} deals vs last week</p>;
+            return <p className="text-xs text-muted-foreground mt-3 text-center">— same as last week for deals</p>;
+          })()}
         </CardContent>
       </Card>
 
