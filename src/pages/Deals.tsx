@@ -297,6 +297,18 @@ export default function Deals() {
     }
   };
 
+  const maybeOpenPortfolioModal = async (deal: Deal) => {
+    const { data: existing } = await supabase
+      .from('portfolio')
+      .select('id')
+      .eq('deal_id', deal.id)
+      .maybeSingle();
+    if (!existing) {
+      setDealToConvert(deal);
+      setPortfolioConversionOpen(true);
+    }
+  };
+
   const updateStage = async (id: string, stage: DealStage) => {
     const allDeals = activeTab === 'table' ? tableDeals : kanbanDeals;
     const deal = allDeals.find(d => d.id === id);
@@ -306,32 +318,10 @@ export default function Deals() {
       const { error } = await supabase.from('deals').update({ stage }).eq('id', id);
       if (error) throw error;
       
-      // Auto-create portfolio position when deal is closed
+      // Open portfolio modal when deal is closed + outcome is win
       if (stage === 'closed' && previousStage !== 'closed' && deal && user) {
-        const { data: existing } = await supabase
-          .from('portfolio')
-          .select('id')
-          .eq('deal_id', deal.id)
-          .maybeSingle();
-
-        if (!existing) {
-          const { error: pErr } = await supabase.from('portfolio').insert({
-            user_id: user.id,
-            deal_id: deal.id,
-            company_name: deal.company_name,
-            sector: deal.sector,
-            entry_valuation_usd: deal.valuation_usd,
-            equity_percent: deal.equity_offered,
-            entry_date: new Date().toISOString().split('T')[0],
-            status: 'active',
-            health_status: 'healthy',
-          });
-          if (pErr) {
-            toast({ title: 'Portfolio error', description: pErr.message, variant: 'destructive' });
-          } else {
-            logActivity({ type: 'portfolio_added', title: `Auto-added ${deal.company_name} to portfolio`, entityType: 'portfolio' });
-            toast({ title: 'Portfolio updated', description: `${deal.company_name} was automatically added to your portfolio.` });
-          }
+        if (deal.outcome === 'win') {
+          await maybeOpenPortfolioModal(deal);
         }
       }
       
@@ -342,9 +332,18 @@ export default function Deals() {
   };
 
   const updateOutcome = async (id: string, outcome: DealOutcome) => {
+    const allDeals = activeTab === 'table' ? tableDeals : kanbanDeals;
+    const deal = allDeals.find(d => d.id === id);
+    
     try {
       const { error } = await supabase.from('deals').update({ outcome }).eq('id', id);
       if (error) throw error;
+      
+      // If outcome set to win on an already-closed deal, open portfolio modal
+      if (outcome === 'win' && deal?.stage === 'closed' && user) {
+        await maybeOpenPortfolioModal(deal);
+      }
+      
       refreshAll();
     } catch (error: any) {
       toast({ title: 'Error updating outcome', description: error.message, variant: 'destructive' });
