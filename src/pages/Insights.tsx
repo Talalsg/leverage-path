@@ -13,6 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Lightbulb, Sparkles, Loader2, Trash2, Pencil, Heart, MessageSquare, Share2, TrendingUp, CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, getDay } from 'date-fns';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
@@ -56,7 +59,7 @@ export default function Insights() {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [formData, setFormData] = useState({ title: '', content: '' });
+  const [formData, setFormData] = useState({ title: '', content: '', scheduled_date: null as Date | null });
   const [generatingAI, setGeneratingAI] = useState(false);
   
   // Search and filter state
@@ -131,12 +134,14 @@ export default function Insights() {
 
   const handleCreate = async () => {
     if (!user || !formData.title) return;
-    const { data, error } = await supabase.from('insights').insert({ user_id: user.id, title: formData.title, content: formData.content || null }).select().single();
+    const insertData: any = { user_id: user.id, title: formData.title, content: formData.content || null };
+    if (formData.scheduled_date) insertData.scheduled_date = format(formData.scheduled_date, 'yyyy-MM-dd');
+    const { data, error } = await supabase.from('insights').insert(insertData).select().single();
     if (error) { toast({ title: 'Error', description: error.message, variant: 'destructive' }); }
     else { 
       toast({ title: 'Insight added' }); 
       setDialogOpen(false); 
-      setFormData({ title: '', content: '' }); 
+      setFormData({ title: '', content: '', scheduled_date: null });
       logActivity({ type: 'insight_created' as any, title: `Created insight: ${formData.title}`, entityType: 'insight', entityId: data?.id });
       fetchInsights(); 
     }
@@ -164,7 +169,8 @@ export default function Insights() {
       const result = data.result || data.raw;
       setFormData({ 
         title: 'AI Generated Draft', 
-        content: typeof result === 'string' ? result : JSON.stringify(result, null, 2) 
+        content: typeof result === 'string' ? result : JSON.stringify(result, null, 2),
+        scheduled_date: null
       });
       setDialogOpen(true);
       toast({ title: 'AI draft generated' });
@@ -236,6 +242,20 @@ export default function Insights() {
               <div className="space-y-4">
                 <div><Label>Title *</Label><Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} placeholder="e.g., Evaluating Pre-Seed Startups in Saudi" /></div>
                 <div><Label>Content</Label><Textarea value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} rows={5} /></div>
+                <div>
+                  <Label>Schedule Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formData.scheduled_date && "text-muted-foreground")}>
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {formData.scheduled_date ? format(formData.scheduled_date, 'PPP') : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar mode="single" selected={formData.scheduled_date || undefined} onSelect={(d) => setFormData({...formData, scheduled_date: d || null})} initialFocus className={cn("p-3 pointer-events-auto")} />
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 <Button onClick={handleCreate} className="w-full">Save Insight</Button>
               </div>
             </DialogContent>
