@@ -108,19 +108,19 @@ export function DealsTable({
 
   return (
     <div className="space-y-3">
-      <div className="border border-border rounded-lg overflow-hidden">
-        <Table>
+      <div className="border border-border rounded-lg overflow-x-auto">
+        <Table className="min-w-[900px]">
           <TableHeader>
             <TableRow className="bg-muted/30">
               <TableHead className="w-10" />
               <TableHead>{sortableHeader('Company', 'company_name')}</TableHead>
-              <TableHead className="hidden md:table-cell">{sortableHeader('Sector', 'sector')}</TableHead>
-              <TableHead className="hidden md:table-cell">Founder</TableHead>
-              <TableHead className="hidden sm:table-cell">{sortableHeader('AI Score', 'ai_score')}</TableHead>
-              <TableHead className="hidden lg:table-cell">{sortableHeader('Valuation', 'valuation_usd')}</TableHead>
+              <TableHead>{sortableHeader('Sector', 'sector')}</TableHead>
+              <TableHead>Founder</TableHead>
+              <TableHead>{sortableHeader('AI Score', 'ai_score')}</TableHead>
+              <TableHead>{sortableHeader('Valuation', 'valuation_usd')}</TableHead>
               <TableHead>{sortableHeader('Stage', 'stage')}</TableHead>
-              <TableHead className="hidden md:table-cell">Outcome</TableHead>
-              <TableHead className="hidden lg:table-cell">{sortableHeader('Date', 'created_at')}</TableHead>
+              <TableHead>Outcome</TableHead>
+              <TableHead>{sortableHeader('Date', 'created_at')}</TableHead>
               <TableHead className="w-28">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -155,18 +155,18 @@ export function DealsTable({
                       {deal.company_name}
                     </button>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
+                  <TableCell>
                     <span className="text-xs text-muted-foreground">{deal.sector || '—'}</span>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
+                  <TableCell>
                     <span className="text-xs text-muted-foreground">{deal.founder_name || '—'}</span>
                   </TableCell>
-                  <TableCell className="hidden sm:table-cell">
+                  <TableCell>
                     {deal.ai_score ? (
-                      <Badge variant="outline" className={`text-xs ${
-                        deal.ai_score >= 70 ? 'text-green-400 border-green-400/50' :
-                        deal.ai_score >= 40 ? 'text-yellow-400 border-yellow-400/50' :
-                        'text-red-400 border-red-400/50'
+                      <Badge className={`text-xs border-0 ${
+                        deal.ai_score >= 70 ? 'bg-green-500/20 text-green-400' :
+                        deal.ai_score >= 40 ? 'bg-yellow-500/20 text-yellow-400' :
+                        'bg-red-500/20 text-red-400'
                       }`}>
                         <Brain className="h-3 w-3 mr-1" />{deal.ai_score}
                       </Badge>
@@ -174,7 +174,7 @@ export function DealsTable({
                       <span className="text-xs text-muted-foreground">—</span>
                     )}
                   </TableCell>
-                  <TableCell className="hidden lg:table-cell">
+                  <TableCell>
                     {deal.valuation_usd ? (
                       <span className="text-xs font-medium text-accent">
                         {deal.valuation_usd >= 1_000_000
@@ -197,7 +197,7 @@ export function DealsTable({
                       </SelectContent>
                     </Select>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell" onClick={e => e.stopPropagation()}>
+                  <TableCell onClick={e => e.stopPropagation()}>
                     <Select value={deal.outcome || 'pending'} onValueChange={v => onUpdateOutcome(deal.id, v as DealOutcome)}>
                       <SelectTrigger className="h-7 text-xs w-[90px]">
                         <SelectValue />
@@ -209,7 +209,7 @@ export function DealsTable({
                       </SelectContent>
                     </Select>
                   </TableCell>
-                  <TableCell className="hidden lg:table-cell">
+                  <TableCell>
                     <span className="text-xs text-muted-foreground">
                       {new Date(deal.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
                     </span>
