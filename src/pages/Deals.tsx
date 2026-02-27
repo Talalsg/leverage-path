@@ -676,6 +676,11 @@ export default function Deals() {
                                     >
                                       {deal.company_name}
                                     </button>
+                                    {(deal.outcome === 'win' || deal.outcome === 'miss') && (
+                                      <Badge className={`text-[10px] h-4 px-1.5 mt-1 w-fit ${deal.outcome === 'win' ? 'bg-green-500/15 text-green-600 border-green-500/30' : 'bg-destructive/15 text-destructive border-destructive/30'}`} variant="outline">
+                                        {deal.outcome === 'win' ? 'Win' : 'Miss'}
+                                      </Badge>
+                                    )}
                                     <div className="flex items-center gap-2 mt-1">
                                       {deal.sector && (
                                         <span className="text-xs text-muted-foreground truncate">
