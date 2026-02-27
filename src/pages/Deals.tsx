@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Target, Brain, Sparkles, GitCompare, BookOpen, BarChart3, Trash2, Pencil, TableIcon } from 'lucide-react';
+import { Plus, Target, Brain, Sparkles, GitCompare, BookOpen, BarChart3, Trash2, Pencil, TableIcon, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AIAdvisor } from '@/components/AIAdvisor';
 import { DealEvaluatorModal } from '@/components/DealEvaluatorModal';
@@ -31,6 +31,7 @@ import { EditDealModal } from '@/components/EditDealModal';
 import { DealDetailsModal } from '@/components/DealDetailsModal';
 import { DealsTable, SortColumn } from '@/components/DealsTable';
 import { DealsQuickStats } from '@/components/DealsQuickStats';
+import { downloadCSV } from '@/lib/csvExport';
 
 type DealStage = 'review' | 'evaluating' | 'passed' | 'term_sheet' | 'closed' | 'rejected';
 type DealOutcome = 'win' | 'miss' | 'regret' | 'noise' | 'pending';
@@ -434,6 +435,22 @@ export default function Deals() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={async () => {
+            if (!user) return;
+            const { data } = await supabase.from('deals').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+            if (data) downloadCSV(data, [
+              { key: 'company_name', label: 'Company' },
+              { key: 'founder_name', label: 'Founder' },
+              { key: 'sector', label: 'Sector' },
+              { key: 'stage', label: 'Stage' },
+              { key: 'ai_score', label: 'AI Score' },
+              { key: 'valuation_usd', label: 'Valuation (USD)' },
+              { key: 'outcome', label: 'Outcome' },
+              { key: 'created_at', label: 'Date', format: (v: string) => v ? new Date(v).toLocaleDateString() : '' },
+            ], 'deals-export');
+          }}>
+            <Download className="h-4 w-4 mr-2" />Export CSV
+          </Button>
           <CSVImport onImportComplete={refreshAll} />
           
           {selectedDeals.size >= 2 && (

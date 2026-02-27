@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -180,25 +181,38 @@ export default function Dashboard() {
 
       <WeeklyReview open={weeklyReviewOpen} onOpenChange={setWeeklyReviewOpen} />
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map((stat) => (
-          <Card key={stat.label} className="stat-card bg-card border-border/50 hover:border-primary/30">
-            <CardContent className="p-5">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">{stat.label}</p>
-                  <p className="text-3xl font-bold text-foreground mt-1">{loading ? '—' : stat.value}</p>
-                  <p className="text-xs text-muted-foreground/70 mt-1">Target: {stat.target}</p>
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <Card key={i} className="bg-card border-border/50">
+              <CardContent className="p-5 space-y-2">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-8 w-12" />
+                <Skeleton className="h-3 w-24" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {statCards.map((stat) => (
+            <Card key={stat.label} className="stat-card bg-card border-border/50 hover:border-primary/30">
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">{stat.label}</p>
+                    <p className="text-3xl font-bold text-foreground mt-1">{stat.value}</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">Target: {stat.target}</p>
+                  </div>
+                  <div className={`p-2 rounded-lg bg-muted ${stat.color}`}>
+                    <stat.icon className="h-5 w-5" />
+                  </div>
                 </div>
-                <div className={`p-2 rounded-lg bg-muted ${stat.color}`}>
-                  <stat.icon className="h-5 w-5" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Analytics Charts */}
       {stats.deals.length > 0 && (

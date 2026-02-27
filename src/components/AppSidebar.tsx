@@ -1,4 +1,4 @@
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Target, 
@@ -6,7 +6,7 @@ import {
   Users, 
   Lightbulb, 
   Compass,
-  LogOut,
+  UserCircle,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
@@ -43,7 +43,8 @@ export function AppSidebar() {
   const { state, toggleSidebar } = useSidebar();
   const collapsed = state === 'collapsed';
   const location = useLocation();
-  const { signOut, user } = useAuth();
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
   return (
     <Sidebar 
@@ -109,9 +110,7 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-4 border-t border-sidebar-border space-y-3">
-        {/* Theme Toggle */}
         <ThemeToggle collapsed={collapsed} />
-        
         <div className="flex items-center justify-between">
           {!collapsed && user && (
             <p className="text-xs text-sidebar-foreground/50 truncate flex-1">{user.email}</p>
@@ -120,14 +119,14 @@ export function AppSidebar() {
         </div>
         <Button
           variant="ghost"
-          onClick={signOut}
+          onClick={() => navigate('/profile')}
           className={cn(
             "w-full justify-start gap-3 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent",
             collapsed && "justify-center px-0"
           )}
         >
-          <LogOut className="h-5 w-5" />
-          {!collapsed && <span>Sign Out</span>}
+          <UserCircle className="h-5 w-5" />
+          {!collapsed && <span>Profile</span>}
         </Button>
       </SidebarFooter>
     </Sidebar>

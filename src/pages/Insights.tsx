@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
@@ -228,81 +229,110 @@ export default function Insights() {
         onClearAll={clearAllFilters}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-card border-border/50">
-          <CardContent className="p-5">
-            <p className="text-sm text-muted-foreground">Published This Quarter</p>
-            <p className="text-3xl font-bold text-warning">{published}</p>
-            <p className="text-xs text-muted-foreground/70">Target: 4-6</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-border/50">
-          <CardContent className="p-5">
-            <p className="text-sm text-muted-foreground">Total Engagement</p>
-            <p className="text-3xl font-bold text-accent">{totalEngagement}</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-border/50">
-          <CardContent className="p-5">
-            <p className="text-sm text-muted-foreground">Inbound Inquiries</p>
-            <p className="text-3xl font-bold text-primary">{filteredInsights.reduce((sum, i) => sum + i.inbound_inquiries, 0)}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredInsights.map(insight => (
-          <Card key={insight.id} className="bg-card border-border/50 hover:border-primary/30 transition-colors">
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map(i => (
+            <Card key={i} className="bg-card border-border/50">
+              <CardContent className="p-5 space-y-2">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-8 w-12" />
+                <Skeleton className="h-3 w-20" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="bg-card border-border/50">
             <CardContent className="p-5">
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Badge variant={insight.status === 'published' ? 'default' : insight.status === 'draft' ? 'secondary' : 'outline'}>
-                    {insight.status}
-                  </Badge>
-                  {insight.platform && (
-                    <Badge variant="outline" className="text-xs">{insight.platform}</Badge>
-                  )}
-                </div>
-                <div className="flex gap-1">
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditModal(insight)}>
-                    <Pencil className="h-3 w-3" />
-                  </Button>
-                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => openDeleteDialog(insight)}>
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-              <p className="font-semibold">{insight.title}</p>
-              {insight.content && <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{insight.content}</p>}
-              
-              {insight.status === 'published' && (
-                <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1"><Heart className="h-3 w-3" />{insight.engagement_likes}</span>
-                  <span className="flex items-center gap-1"><MessageSquare className="h-3 w-3" />{insight.engagement_comments}</span>
-                  <span className="flex items-center gap-1"><Share2 className="h-3 w-3" />{insight.engagement_shares}</span>
-                  {insight.inbound_inquiries > 0 && (
-                    <span className="flex items-center gap-1 text-primary"><TrendingUp className="h-3 w-3" />{insight.inbound_inquiries} inbound</span>
-                  )}
-                </div>
-              )}
-
-              <div className="mt-4">
-                <Select value={insight.status} onValueChange={v => updateStatus(insight.id, v as Status, insight.title)}>
-                  <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="idea">Idea</SelectItem>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="published">Published</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <p className="text-sm text-muted-foreground">Published This Quarter</p>
+              <p className="text-3xl font-bold text-warning">{published}</p>
+              <p className="text-xs text-muted-foreground/70">Target: 4-6</p>
             </CardContent>
           </Card>
-        ))}
-        {filteredInsights.length === 0 && !loading && (
-          <Card className="col-span-full bg-muted/30 border-dashed"><CardContent className="p-8 text-center text-muted-foreground">No insights found. {searchQuery || Object.keys(filterValues).length > 0 ? 'Try adjusting your filters.' : 'Capture your first idea.'}</CardContent></Card>
-        )}
-      </div>
+          <Card className="bg-card border-border/50">
+            <CardContent className="p-5">
+              <p className="text-sm text-muted-foreground">Total Engagement</p>
+              <p className="text-3xl font-bold text-accent">{totalEngagement}</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-card border-border/50">
+            <CardContent className="p-5">
+              <p className="text-sm text-muted-foreground">Inbound Inquiries</p>
+              <p className="text-3xl font-bold text-primary">{filteredInsights.reduce((sum, i) => sum + i.inbound_inquiries, 0)}</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3].map(i => (
+            <Card key={i} className="bg-card border-border/50">
+              <CardContent className="p-5 space-y-3">
+                <Skeleton className="h-5 w-16" />
+                <Skeleton className="h-5 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-8 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredInsights.map(insight => (
+            <Card key={insight.id} className="bg-card border-border/50 hover:border-primary/30 transition-colors">
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Badge variant={insight.status === 'published' ? 'default' : insight.status === 'draft' ? 'secondary' : 'outline'}>
+                      {insight.status}
+                    </Badge>
+                    {insight.platform && (
+                      <Badge variant="outline" className="text-xs">{insight.platform}</Badge>
+                    )}
+                  </div>
+                  <div className="flex gap-1">
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditModal(insight)}>
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => openDeleteDialog(insight)}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+                <p className="font-semibold">{insight.title}</p>
+                {insight.content && <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{insight.content}</p>}
+                
+                {insight.status === 'published' && (
+                  <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1"><Heart className="h-3 w-3" />{insight.engagement_likes}</span>
+                    <span className="flex items-center gap-1"><MessageSquare className="h-3 w-3" />{insight.engagement_comments}</span>
+                    <span className="flex items-center gap-1"><Share2 className="h-3 w-3" />{insight.engagement_shares}</span>
+                    {insight.inbound_inquiries > 0 && (
+                      <span className="flex items-center gap-1 text-primary"><TrendingUp className="h-3 w-3" />{insight.inbound_inquiries} inbound</span>
+                    )}
+                  </div>
+                )}
+
+                <div className="mt-4">
+                  <Select value={insight.status} onValueChange={v => updateStatus(insight.id, v as Status, insight.title)}>
+                    <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="idea">Idea</SelectItem>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="published">Published</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+          {filteredInsights.length === 0 && !loading && (
+            <Card className="col-span-full bg-muted/30 border-dashed"><CardContent className="p-8 text-center text-muted-foreground">No insights found. {searchQuery || Object.keys(filterValues).length > 0 ? 'Try adjusting your filters.' : 'Capture your first idea.'}</CardContent></Card>
+          )}
+        </div>
+      )}
 
       <EditInsightModal insight={insightToEdit} open={editModalOpen} onOpenChange={setEditModalOpen} onSaved={fetchInsights} />
       <DeleteConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} onConfirm={handleDelete} title="Delete Insight" itemName={insightToDelete?.title} loading={deleting} />
