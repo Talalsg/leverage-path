@@ -89,7 +89,7 @@ const sectorOptions = [
   { value: 'other', label: 'Other' },
 ];
 
-const KANBAN_CAP = 20;
+const KANBAN_CAP = 5;
 const TABLE_PAGE_SIZE = 50;
 
 export default function Deals() {
