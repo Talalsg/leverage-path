@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -31,12 +32,12 @@ import {
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { title: 'Dashboard', url: '/', icon: LayoutDashboard },
-  { title: 'Deal Flow', url: '/deals', icon: Target },
-  { title: 'Portfolio', url: '/portfolio', icon: Briefcase },
-  { title: 'Ecosystem', url: '/ecosystem', icon: Users },
-  { title: 'Insights', url: '/insights', icon: Lightbulb },
-  { title: 'Strategy', url: '/strategy', icon: Compass },
+  { title: 'Dashboard', url: '/', icon: LayoutDashboard, shortcut: 'D' },
+  { title: 'Deal Flow', url: '/deals', icon: Target, shortcut: 'F' },
+  { title: 'Portfolio', url: '/portfolio', icon: Briefcase, shortcut: 'P' },
+  { title: 'Ecosystem', url: '/ecosystem', icon: Users, shortcut: 'E' },
+  { title: 'Insights', url: '/insights', icon: Lightbulb, shortcut: 'I' },
+  { title: 'Strategy', url: '/strategy', icon: Compass, shortcut: 'S' },
 ];
 
 export function AppSidebar() {
@@ -46,6 +47,21 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target as HTMLElement)?.isContentEditable) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const key = e.key.toUpperCase();
+      const item = navItems.find(n => n.shortcut === key);
+      if (item) {
+        e.preventDefault();
+        navigate(item.url);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [navigate]);
   return (
     <Sidebar 
       className={cn(
@@ -98,7 +114,12 @@ export function AppSidebar() {
                         activeClassName="bg-sidebar-primary text-sidebar-primary-foreground"
                       >
                         <item.icon className={cn("h-5 w-5 flex-shrink-0", collapsed && "mx-auto")} />
-                        {!collapsed && <span className="font-medium">{item.title}</span>}
+                        {!collapsed && (
+                          <div className="flex items-center justify-between flex-1">
+                            <span className="font-medium">{item.title}</span>
+                            <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sidebar-accent text-sidebar-foreground/50 border border-sidebar-border/50">{item.shortcut}</kbd>
+                          </div>
+                        )}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
