@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,6 +19,10 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const { signIn, signUp, user, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -213,7 +218,61 @@ export default function Auth() {
                     ) : (
                       'Sign In'
                     )}
-                  </Button>
+                   </Button>
+                  {!showForgotPassword ? (
+                    <button
+                      type="button"
+                      onClick={() => { setShowForgotPassword(true); setResetEmail(email); setResetSent(false); }}
+                      className="w-full text-center text-sm text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      Forgot password?
+                    </button>
+                  ) : (
+                    <div className="space-y-3 pt-2 border-t border-border">
+                      <p className="text-sm text-muted-foreground">Enter your email to receive a reset link.</p>
+                      {resetSent ? (
+                        <p className="text-sm text-accent font-medium">Check your email for a reset link.</p>
+                      ) : (
+                        <>
+                          <Input
+                            type="email"
+                            placeholder="your@email.com"
+                            value={resetEmail}
+                            onChange={(e) => setResetEmail(e.target.value)}
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="flex-1"
+                              onClick={() => setShowForgotPassword(false)}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              type="button"
+                              className="flex-1"
+                              disabled={resetLoading || !resetEmail}
+                              onClick={async () => {
+                                setResetLoading(true);
+                                const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+                                  redirectTo: `${window.location.origin}/reset-password`,
+                                });
+                                setResetLoading(false);
+                                if (error) {
+                                  toast({ title: 'Error', description: error.message, variant: 'destructive' });
+                                } else {
+                                  setResetSent(true);
+                                }
+                              }}
+                            >
+                              {resetLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Send Reset Link'}
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </form>
               </TabsContent>
               
