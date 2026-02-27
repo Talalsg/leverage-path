@@ -1,73 +1,61 @@
 
 
-# Optimizing Deal Flow for 1,000+ Annual Deals
+## Batch Implementation: 4 Features
 
-## The Problem
+### 1. Error Boundary Component
+**New file: `src/components/ErrorBoundary.tsx`**
+- React class component wrapping the entire app in `App.tsx`
+- Catches render errors, displays clean error screen with app branding, error message, and "Reload" button (`window.location.reload()`)
+- Uses existing Card, Button components and design system
 
-The current Deals page has three critical bottlenecks when scaling to 1,000+ deals:
+**Edit: `src/App.tsx`**
+- Wrap everything inside `<ErrorBoundary>` at the outermost level
 
-1. **Data fetch limit**: The query fetches all deals at once, but the database has a default 1,000-row cap -- meaning you'd silently lose deals from view.
-2. **Kanban overload**: Columns like "Review" could have 500+ cards, making the board unusable for scanning and decision-making.
-3. **No list/table view**: When you need to quickly scan, sort, and triage hundreds of deals, a Kanban board is the wrong tool.
+### 2. User Profile Page
+**New file: `src/pages/Profile.tsx`**
+- Shows user email (read-only from `useAuth`)
+- Editable display name field, fetched/updated via `profiles` table
+- Sign Out button (calls `signOut` from `useAuth`)
+- Uses existing Card, Input, Button, Label components
 
-## The Solution
+**Edit: `src/App.tsx`**
+- Add `/profile` route inside the protected layout
 
-### 1. Add a Table View (Primary Change)
+**Edit: `src/components/AppSidebar.tsx`**
+- Replace the footer Sign Out button + email text with a clickable user avatar/icon linking to `/profile`
+- Remove standalone Sign Out button (moved to Profile page)
+- Keep AlertsPanel and ThemeToggle in footer
 
-Add a new "Table" tab alongside the existing Pipeline/Kanban view. This becomes the default power-user view for high-volume deal management:
+### 3. CSV Export (Deals + Portfolio)
+**New file: `src/lib/csvExport.ts`**
+- `downloadCSV(rows, columnDefs, filename)` utility: builds CSV string, creates Blob, triggers download
+- Generic, reusable for any table
 
-- Sortable columns: Company, Sector, Stage, AI Score, Valuation, Date, Outcome
-- Compact rows showing key data at a glance
-- Inline stage/outcome dropdowns (same as Kanban cards)
-- Row click opens the existing Deal Details modal
-- Checkbox column for multi-select comparison (reuses existing logic)
+**Edit: `src/pages/Deals.tsx`**
+- Add "Export CSV" button in header next to "Add Deal"
+- On click: fetch ALL deals for user (no pagination), map to CSV columns (Company, Founder, Sector, Stage, AI Score, Valuation, Outcome, Date), call `downloadCSV`
 
-### 2. Server-Side Pagination
+**Edit: `src/pages/Portfolio.tsx`**
+- Add "Export CSV" button in header next to "Add Position"
+- Exports: Company, Sector, Equity %, Entry Valuation, Current Valuation, Status, Health, Runway
 
-Replace the single `select('*')` call with paginated fetching:
+### 4. Skeleton Loading States
+**Edit: `src/pages/Dashboard.tsx`**
+- When `loading === true`, render Skeleton placeholders for stat cards (4 skeleton cards), charts area, quarterly focus, and activity feed
 
-- 50 deals per page (configurable)
-- Page navigation controls at bottom of table
-- Server-side filtering: push stage, sector, and outcome filters into the database query instead of filtering 1,000+ records client-side
-- Search uses `.ilike()` on company_name, sector, founder_name
+**Edit: `src/pages/Deals.tsx`**
+- Add skeleton for QuickStats row while `tableLoading` or `kanbanLoading`
 
-### 3. Sort Controls
+**Edit: `src/pages/Portfolio.tsx`**
+- When `loading === true`, render skeleton for the 3 stat cards and the position grid
 
-- Click column headers to sort by any field (ai_score, created_at, valuation, company_name)
-- Sort direction toggle (asc/desc)
-- Sort is pushed to the database query for efficiency
+**Edit: `src/pages/Insights.tsx`**
+- When `loading === true`, render skeleton for the 3 stat cards and the insight cards grid
 
-### 4. Quick Stats Bar
+All skeletons use the existing `<Skeleton />` component from `src/components/ui/skeleton.tsx`.
 
-A compact summary row above the table showing:
-- Total deals count
-- Deals by stage (Review: 342, Evaluating: 89, etc.)
-- Average AI score
-- This month's new deals count
-
-### 5. Kanban Stays But Gets Smarter
-
-The Kanban view remains for visual pipeline management but gets a cap:
-- Show only the 20 most recent deals per column
-- "Show all X deals" link at bottom of each column
-- Or filter to a specific time range (This month / This quarter / This year)
-
----
-
-## Technical Details
-
-### Files to modify:
-- **`src/pages/Deals.tsx`** -- Add table view tab, server-side pagination state, sort state, refactor `fetchDeals` to accept pagination/filter/sort params
-- **`src/components/DealsTable.tsx`** (new) -- Sortable table component with inline controls
-- **`src/components/DealsPagination.tsx`** (new) -- Pagination controls using existing pagination UI components
-- **`src/components/DealsQuickStats.tsx`** (new) -- Summary stats bar
-
-### Database query changes:
-- Use `.range(from, to)` for pagination
-- Use `.order(column, { ascending })` for sorting
-- Push filters server-side: `.eq('stage', stage)`, `.ilike('company_name', '%query%')`
-- Separate count query using `.select('*', { count: 'exact', head: true })` to get total without fetching all rows
-
-### No database migrations needed
-The existing schema supports all of this. No new tables or columns required.
+### Files Summary
+- **New (3):** `ErrorBoundary.tsx`, `Profile.tsx`, `csvExport.ts`
+- **Edit (6):** `App.tsx`, `AppSidebar.tsx`, `Deals.tsx`, `Portfolio.tsx`, `Dashboard.tsx`, `Insights.tsx`
+- **No database changes.** Profiles table already has `display_name` column.
 
